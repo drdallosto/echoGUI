@@ -1445,8 +1445,9 @@ def startActiveIntensity():
         act_start_time = None  # reset on each new run
 
         actNodes.clear()  
-        tt1.clear(); actv1.clear(); az1.clear() #clear data for new run
-        tt2.clear(); actv2.clear(); az2.clear()
+        tt1.clear(); actv1.clear(); az1.clear(); hist1.clear(); qfct1.clear() #clear data for new run
+        tt2.clear(); actv2.clear(); az2.clear(); hist2.clear(); qfct2.clear()
+
         line1.set_data([], []); line2.set_data([], [])  #clear line data
         line3.set_data([], []); line4.set_data([], [])
 
