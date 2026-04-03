@@ -1,4 +1,4 @@
-#changeParamsGUI_31Mar2026.py
+#ECHO_GUI.py
 
 # import modules 
 from pymavlink import mavutil
@@ -25,6 +25,10 @@ from parameters import hap_description
 from parameters import avs_description
 
 
+guiFontSize = 17
+plotFontSize = 10 
+plotSize = 8
+
 # set mavlink dialect
 mavutil.set_dialect("development")
 
@@ -34,8 +38,21 @@ ports = serial.tools.list_ports.comports()
 
 deviceList = []
 for port in ports:
-    deviceList.append(port.device)
+    ##if 'USB Serial Device' in port.description:
+    deviceList.append(port.device) # device
+
+print()
 print("Available comm ports: ", deviceList)
+
+whichPort = input("Enter COM port index (e.g., 0, 1, etc): ") # prompt user to select COM port
+print()
+
+
+# # Connect to the vehicle
+connection = mavutil.mavlink_connection(device=deviceList[int(whichPort)], baud=57600) 
+connection.wait_heartbeat(timeout=8) 
+print("Heartbeat received")
+print()
 
 img = mpimg.imread("head_topview.jpg")
 img2 = mpimg.imread("side_profile3.jpg")
@@ -73,14 +90,7 @@ act_r = 0.0
 csv_lock = threading.Lock()
 
 
-# # Connect to the vehicle
-connection = mavutil.mavlink_connection(device=deviceList[0], baud=57600) 
-connection.wait_heartbeat(timeout=5) 
-print("Heartbeat received")
-print()
-
 root = tk.Tk()
-
 root.title("Flight Controller and ARES Control Panel")
 # #get computers screen dimensions 
 screen_width = root.winfo_screenwidth();   #print('screen_width:', screen_width )  
@@ -89,12 +99,13 @@ screen_height = root.winfo_screenheight();  #print('screen_height:', screen_heig
 root.geometry("+200+100") 
 
 # make the font bigger globally
-default_font = tk.font.nametofont("TkDefaultFont")
-default_font.configure(size=18)
+default_font = tk.font.nametofont("TkDefaultFont") #
+default_font.configure(size=guiFontSize) 
 root.option_add("*Font", default_font) 
 root.resizable(False, False)
 
 #root.geometry(f"{int(screen_width*.5)}" + 'x' + f"{int(screen_height*.8)}")
+#root.geometry(f"{int(screen_width)}" + 'x' + f"{int(screen_height)}")
 
 # create tabs
 tabControl = ttk.Notebook(root)
@@ -125,7 +136,7 @@ aresFrame.pack(expand = True,fill="both", padx=10, pady=10)
 
 # #frame for tab2
 frame2 = tk.LabelFrame(tab2, padx=5) #, pady=5)
-frame2.pack(side ='left', padx=5)
+frame2.pack(side ='left', padx=5, expand=True)
 # frame2.pack(expand=True, padx=10, pady=10) #side='top', fill="both", expand=True,  padx=10, pady=10)
 
 # #frame for tab3
@@ -151,7 +162,7 @@ imgFrame = tk.Frame(master=frame2, padx=5, pady=5) #,padx=10, pady=10) master=vi
 #imgFrame.pack(side="top",padx=5)#grid(row=0, column=2)
 imgFrame.grid(row=0, column=0, padx=5, pady=5)
 
-fig3, ax3 = plt.subplots(figsize=(6,5))  #5,4
+fig3, ax3 = plt.subplots(figsize=(plotSize-2,plotSize-2))  #5,4
 canvas3 = FigureCanvasTkAgg(fig3, master=imgFrame)  # Place in the plot frame
 ax3.patch.set_facecolor('white') 
 # #self.fig3.patch.set_facecolor('none') 
@@ -187,7 +198,7 @@ ax3.add_patch(circle_red_az_r)
 circle_green_az_l = plt.Circle((0,0), 0.05, color='green', label = 'left node')
 ax3.add_patch(circle_green_az_l)
 
-ax3.legend(handles=[circle_red_az_r, circle_green_az_l], loc='upper right', fontsize=10)
+ax3.legend(handles=[circle_red_az_r, circle_green_az_l], loc='upper right', fontsize=plotFontSize)
 
 canvas3.draw()  # initial draw
 background2 = canvas3.copy_from_bbox(ax3.bbox) # snapshot BEFORE circles
@@ -199,7 +210,7 @@ imgFrame3 = tk.Frame(master=frame2, padx=5, pady=5)
 #imgFrame3.pack(side="top", padx=5)
 imgFrame3.grid(row=1, column=0, padx=5, pady=5)
 
-fig5, ax5 = plt.subplots(figsize=(6,5))
+fig5, ax5 = plt.subplots(figsize=(plotSize-2,plotSize-2))
 canvas5 = FigureCanvasTkAgg(fig5, master=imgFrame3)
 ax5.patch.set_facecolor('white')
 fig5.patch.set_alpha(0)
@@ -230,7 +241,7 @@ circle_red_yaw = plt.Circle((0,0), 0.05, color='red', label='IMU')
 ax5.add_patch(circle_red_yaw)
 
 
-ax5.legend(handles=[circle_red_yaw], loc='upper right', fontsize=10)
+ax5.legend(handles=[circle_red_yaw], loc='upper right', fontsize=plotFontSize)
 
 canvas5.draw()
 background4 = canvas5.copy_from_bbox(ax5.bbox)  # snapshot BEFORE circles
@@ -241,7 +252,7 @@ imgFrame2 = tk.Frame(master=frame2)
 #imgFrame2.pack(side="right", padx=5)
 imgFrame2.grid(row=0, column=1, padx=5, pady=5)
 
-fig4, ax4 = plt.subplots(figsize=(6,5)) 
+fig4, ax4 = plt.subplots(figsize=(plotSize-2,plotSize-2)) 
 canvas4 = FigureCanvasTkAgg(fig4, master=imgFrame2)  # Place in the plot frame
 ax4.patch.set_facecolor('white') 
 #fig4.patch.set_facecolor('none') 
@@ -286,7 +297,7 @@ imgFrame4 = tk.Frame(master=frame2)
 #imgFrame2.pack(side="right", padx=5)
 imgFrame4.grid(row=1, column=1, padx=5, pady=5)
 
-fig6, ax6 = plt.subplots(figsize=(6,5)) 
+fig6, ax6 = plt.subplots(figsize=(plotSize-2,plotSize-2)) 
 canvas6 = FigureCanvasTkAgg(fig6, master=imgFrame4)  # Place in the plot frame
 ax6.patch.set_facecolor('white') 
 #fig4.patch.set_facecolor('none') 
@@ -334,16 +345,16 @@ ind2=0
 spec = np.zeros((60,16)) # storage for spectrogram; x: time steps to keep visible; y: number of mel bands
 spec2 = np.zeros((60,16))
 
-fig, ax = plt.subplots(2,1,figsize=(10, 8))
+fig, ax = plt.subplots(2,1,figsize=(plotSize, plotSize))
 im0 = ax[0].imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
-ax[0].set_ylabel("Time",fontsize=15); ax[0].set_xlabel("Mel bands",fontsize=15); ax[0].set_title("Real-time Mel Spectrogram", fontsize=19)
+ax[0].set_ylabel("Time",fontsize=plotFontSize); ax[0].set_xlabel("Mel bands",fontsize=plotFontSize); ax[0].set_title("Real-time Mel Spectrogram", fontsize=plotFontSize+3)
 im0.set_clim(vmin=0, vmax=100)  # rescale colors 
 # set font size for both major and minor ticks
 ax[0].tick_params(axis='both', which='major', labelsize=13)
 # ax[0].tick_params(axis='both', which='minor', labelsize=9)
 
 im1 = ax[1].imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
-ax[1].set_ylabel("Time",fontsize=15); ax[1].set_xlabel("Mel bands", fontsize=15); ax[1].set_title("Real-time Mel Spectrogram", fontsize=19)
+ax[1].set_ylabel("Time",fontsize=plotFontSize); ax[1].set_xlabel("Mel bands", fontsize=plotFontSize); ax[1].set_title("Real-time Mel Spectrogram", fontsize=plotFontSize+3)
 im1.set_clim(vmin=0, vmax=100) 
 # set font size for both major and minor ticks
 ax[1].tick_params(axis='both', which='major', labelsize=13)
@@ -368,17 +379,17 @@ backgroundd = fig.canvas.copy_from_bbox(ax[1].bbox)
 # ----------- NED plot ---------------------------------------
 
 # Create NED plot
-figNED = plt.figure(figsize=(9,9))
+figNED = plt.figure(figsize=(plotSize,plotSize))
 axNED = figNED.add_subplot(111, projection='3d')
 canvasNED = FigureCanvasTkAgg(figNED, master=nedFrame)
 canvasNED.get_tk_widget().pack()
 
-axNED.set_title("NED Trajectory", fontsize=18)
-axNED.set_xlabel("North", fontsize=14)
-axNED.set_ylabel("East", fontsize=14)
-axNED.set_zlabel("Down", fontsize=14)
+axNED.set_title("NED Trajectory", fontsize=plotFontSize+3)
+axNED.set_xlabel("North", fontsize=plotFontSize)
+axNED.set_ylabel("East", fontsize=plotFontSize)
+axNED.set_zlabel("Down", fontsize=plotFontSize)
 axNED.grid(True)
-axNED.tick_params(axis='both', which='major', labelsize=13)
+axNED.tick_params(axis='both', which='major', labelsize=plotFontSize)
 #figNED.tight_layout() 
 
 ned_line, = axNED.plot([], [], [], color='blue')  # create empty 3d line object
@@ -400,17 +411,17 @@ down_data = deque(maxlen=max_data)
 intFrame = tk.Frame(master=frame5) #,padx=10, pady=10)
 intFrame.pack(side="left")#grid(row=0, column=2)
 
-intFig, (intAx, azAx) = plt.subplots(2, 1, figsize=(10, 10)) # one figure containing two subplots
+intFig, (intAx, azAx) = plt.subplots(2, 1, figsize=(plotSize, plotSize)) # one figure containing two subplots
 intCanvas = FigureCanvasTkAgg(intFig, master=intFrame) #create canvas for figure
 intCanvas.get_tk_widget().pack()
 
-intAx.set_xlabel("Time", fontsize=13)
-intAx.set_ylabel("Active intensity", fontsize=13)
-intAx.set_title("Active Intensity Over Time", fontsize=18)
+intAx.set_xlabel("Time", fontsize=plotFontSize)
+intAx.set_ylabel("Active intensity", fontsize=plotFontSize)
+intAx.set_title("Active Intensity Over Time", fontsize=plotFontSize+3)
 
-azAx.set_xlabel("Time", fontsize=13)
-azAx.set_ylabel("Azimuth", fontsize=13)
-azAx.set_title("Azimuth Over Time", fontsize=18)
+azAx.set_xlabel("Time", fontsize=plotFontSize)
+azAx.set_ylabel("Azimuth", fontsize=plotFontSize)
+azAx.set_title("Azimuth Over Time", fontsize=plotFontSize+3)
 
 # # create empty line objects
 line1, = intAx.plot([], [], 'b')
@@ -1445,9 +1456,8 @@ def startActiveIntensity():
         act_start_time = None  # reset on each new run
 
         actNodes.clear()  
-        tt1.clear(); actv1.clear(); az1.clear(); hist1.clear(); qfct1.clear() #clear data for new run
-        tt2.clear(); actv2.clear(); az2.clear(); hist2.clear(); qfct2.clear()
-
+        tt1.clear(); actv1.clear(); az1.clear() #clear data for new run
+        tt2.clear(); actv2.clear(); az2.clear()
         line1.set_data([], []); line2.set_data([], [])  #clear line data
         line3.set_data([], []); line4.set_data([], [])
 
