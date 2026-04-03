@@ -1,0 +1,11 @@
+# requirements.txt
+
+# libraries to install with pip for the ECHO project
+pymavlink
+pyserial
+matplotlib
+numpy
+
+# install by running: pip install -r requirements.txt 
+
+# standard library (no install needed): tkinter, struct, time, threading, csv, os, datetime, queue, collections
