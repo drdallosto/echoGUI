@@ -1011,16 +1011,16 @@ def updatePlots():
     #flipped to start at 90 degree and rotate clockwise
     updateYyaw = 1.15*np.cos(np.deg2rad(yaw))  #X 
     updateXyaw = 1.15*np.sin(np.deg2rad(yaw))  #Y
-
-    if int(updateHapParams['HAP_IMU_UP_DOWN'].get()) == 0:  # up/down mode
-
-        #flipped to start at 90 degree and rotate clockwise
-        updateY_up_down = 1.15*np.cos(np.deg2rad(roll))  #X 
-        updateX_up_down = 1.15*np.sin(np.deg2rad(roll))  #Y
-    else: 
+    
+#   if int(updateHapParams['HAP_IMU_UP_DOWN'].get()) == 0:  # up/down mode
+#
+#        #flipped to start at 90 degree and rotate clockwise
+#        updateY_up_down = 1.15*np.cos(np.deg2rad(roll))  #X 
+#        updateX_up_down = 1.15*np.sin(np.deg2rad(roll))  #Y
+#    else: 
         # flipped to start at 90 degree and rotate clockwise
-        updateY_up_down = 1.15*np.cos(np.deg2rad(pitch))  #X
-        updateX_up_down = 1.15*np.sin(np.deg2rad(pitch))  #Y
+    updateY_up_down = 1.15*np.cos(np.deg2rad(pitch))  #X
+    updateX_up_down = 1.15*np.sin(np.deg2rad(pitch))  #Y
 
     circle_red_yaw.set_center((updateXyaw, updateYyaw))
     ax5.draw_artist(circle_red_yaw)
