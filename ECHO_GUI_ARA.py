@@ -20,8 +20,8 @@ import numpy as np
 import sys
 
 # import parameters from parameters.py
-from parameters import all_params   
-from parameters import hap_description
+from parameters_ARA import all_params   
+from parameters_ARA import hap_description
 #from parameters import avs_description
 
 
