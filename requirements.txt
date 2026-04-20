@@ -5,6 +5,7 @@ pymavlink
 pyserial
 matplotlib
 numpy
+PyQt6
 
 # install by running: pip install -r requirements.txt 
 
