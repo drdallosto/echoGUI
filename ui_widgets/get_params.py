@@ -6,7 +6,7 @@ from pymavlink import mavutil
 
 ''' Function to get both haptic and ares parameters from the vehicle '''
 
-def getParams(connection, all_params, storeHapParams, storeAvsParams):
+def getParams(connection, all_params, storeHapParams): #, storeAvsParams):
 
     
     for name in all_params:
@@ -16,9 +16,9 @@ def getParams(connection, all_params, storeHapParams, storeAvsParams):
             name.encode('utf-8'),
             -1)
 
-        time.sleep(0.08)
+        time.sleep(0.5) #0.08)
 
-        message = connection.recv_match(type='PARAM_VALUE', blocking=True, timeout=0.1)
+        message = connection.recv_match(type='PARAM_VALUE', blocking=True, timeout=0.2)
 
         if message is None:
             break
@@ -38,7 +38,7 @@ def getParams(connection, all_params, storeHapParams, storeAvsParams):
         elif message.param_type == 9:
             storeHapParams[message.param_id] = round(message.param_value, 2)
 
-        else:
-            bytes_value = struct.pack('f', message.param_value)
-            int_value = struct.unpack('i', bytes_value)[0]
-            storeAvsParams[message.param_id] = int_value
+        # else:
+        #     bytes_value = struct.pack('f', message.param_value)
+        #     int_value = struct.unpack('i', bytes_value)[0]
+        #     storeAvsParams[message.param_id] = int_value

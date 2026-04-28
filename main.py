@@ -6,7 +6,7 @@ from PyQt6.QtSerialPort import QSerialPortInfo
 from PyQt6.QtCore import Qt, QSize, QObject, QThread, pyqtSignal, QTimer
 from pymavlink import mavutil
 
-from ui_widgets.parameters import all_params, hap_description, avs_description
+from ui_widgets.parameters import all_params, hap_description #, avs_description
 from ui_widgets.get_params import getParams
 from ui_widgets.display_params import displayParams
 from ui_widgets.send_updated_params import sendUpdatedParams
@@ -15,8 +15,6 @@ from ui_widgets.stop_sensor_avs_streams import disableStreams
 from ui_widgets.set_sync_time import setTimer #, sync_time, log_data
 from ui_widgets.sync_time_at_start import syncTimeAtStart
 from ui_widgets.log_data_worker import LogDataWorker
-
-from ui_widgets.stop_sensor_avs_streams import disableStreams
 from ui_widgets.plot_active_intensity_worker import PlotActiveIntensityWorker
 
 from ui_widgets.create_act_int_plot import createActIntPlot
@@ -42,14 +40,13 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         self.port_map           = {}
         self.getDevConns        = {} # {'dev1': 'COM6', 'dev2': 'COM15'}
         self.storeHapParams     = {} 
-        self.storeAvsParams     = {} 
+        # self.storeAvsParams     = {} 
         self.updateHapParams    = {}
-        self.updateAvsParams    = {}
+        # self.updateAvsParams    = {}
 
         self.get_available_ports()
         self.get_connected()
         self.setupUI()
-
 
         # # Connect to the flight controller
         # self.connection = mavutil.mavlink_connection(device=self.portList[0], baud=57600)
@@ -57,16 +54,29 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         # print("Heartbeat received\n")
 
         first_conn = next(iter(self.getDevConns.values())) #gets first connection without needing to know its key name
-        getParams(first_conn, all_params, self.storeHapParams, self.storeAvsParams)
-        self.updateHapParams, self.updateAvsParams, self.timerEntry = displayParams(self.tab1, self.storeHapParams, self.storeAvsParams, 
-                                                                                    hap_description, avs_description, self.update_param_btn, 
-                                                                                    self.log_data_btn, self.sync_time_btn) 
-                                                                                    # pass the button instances to displayParams to connect them to their respective functions
-
-        self.act_int_lines, self.azm_lines, self.intAx, self.azAx, self.intCanvas, self.act_int_thresh_entry, self.q_thresh_entry, self.hist_thresh_entry = createActIntPlot(self.tab2, self.plot_act_int_btn,list(self.getDevConns.keys()))
+        getParams(first_conn, all_params, self.storeHapParams) #, self.storeAvsParams)
+        self.updateHapParams, self.timerEntry, self.dev_combo = displayParams(self.tab1,
+                                                              self.storeHapParams,
+                                                              hap_description,
+                                                              self.update_param_btn,
+                                                              self.log_data_btn,
+                                                              self.sync_time_btn,
+                                                              list(self.getDevConns.keys())) 
+                                                             # pass the button instances to displayParams to connect them to their respective functions
+        (self.act_int_lines,
+        self.azm_lines,
+        self.intAx,
+        self.azAx,
+        self.intCanvas,
+        self.act_int_thresh_entry,
+        self.q_thresh_entry,
+        self.hist_thresh_entry) = createActIntPlot(self.tab2,self.plot_act_int_btn,list(self.getDevConns.keys()))
         
-        self.ned_lines,self.axNED, self.canvasNED = createNEDPlot(self.tab3, self.plot_ned_btn, list(self.getDevConns.keys()))
-        self.azimuth_lines, self.dev_positions, self.devLocCanvas, self.loc_act_int_thresh_entry = createSoundLoc(self.tab4, list(self.getDevConns.keys()), self.sound_loc_btn)
+        self.ned_lines,self.axNED, self.canvasNED = createNEDPlot(self.tab3,self.plot_ned_btn,list(self.getDevConns.keys()))
+
+        self.azimuth_lines, self.dev_positions, self.devLocCanvas, self.loc_act_int_thresh_entry = createSoundLoc(self.tab4, 
+                                                                                                                  list(self.getDevConns.keys()), 
+                                                                                                                  self.sound_loc_btn)
 
         QTimer.singleShot(0, lambda: syncTimeAtStart(self.getDevConns))  # sync time once gui is launched
 
@@ -89,6 +99,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
             connection.wait_heartbeat(timeout=8)
             self.getDevConns[name]=connection
             print(f"Heartbeat received from {name}")
+
             disableStreams(connection)
 
     def setupUI(self):
@@ -172,7 +183,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
                                                     self.act_int_thresh_entry, 
                                                     self.q_thresh_entry, 
                                                     self.hist_thresh_entry)
-        self.act_thread = QThread()
+        self.act_thread = QThread()   
         self.act_worker.moveToThread(self.act_thread)
         self.act_thread.started.connect(self.act_worker.run)
         self.act_worker.finished.connect(self.act_thread.quit)
@@ -230,7 +241,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
 
     def onUpdateParamsClicked(self):
         first_conn = next(iter(self.getDevConns.values()))
-        sendUpdatedParams(first_conn, self.updateHapParams, self.updateAvsParams)
+        sendUpdatedParams(first_conn, self.updateHapParams) #, self.updateAvsParams)
 
     def onSyncTimeClicked(self):
         syncTimeAtStart(self.getDevConns)

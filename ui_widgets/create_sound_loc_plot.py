@@ -3,9 +3,10 @@ from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QSizePolicy, QWidget, QLab
 from PyQt6.QtGui import QFont
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.ticker import MultipleLocator
 
 
-circle_radius = 3
+small_rad = 1
 
 # fixed positions — dev1 top-left, dev2 top-right, dev3 bottom-right, dev4 bottom-left
 dev_x_pos = [-1,  1,  1, -1]
@@ -44,41 +45,54 @@ def createSoundLoc(tab, dev_names, sound_loc_btn):
     layout.addWidget(canvas)
 
     ax = figure.add_subplot(111)
-    ax.set_aspect("equal")
-
-    # one blue dot per device with a label
-    for i, name in enumerate(dev_names):
-        ax.scatter(dev_x_pos[i], dev_y_pos[i], s=100, color="blue")
-        dx, dy = dev_labels[i] 
-        ax.text(dev_x_pos[i] + dx, dev_y_pos[i] + dy, name, fontsize=8, color="blue")
-
-    # lines at (0,0)
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.axvline(0, color="black", linewidth=0.8)
-
-    # circle
-    theta = np.linspace(0, 2 * np.pi, 360)
-    ax.plot(circle_radius * np.cos(theta), circle_radius * np.sin(theta), color="gray", linewidth=0.5)
+    ax.set_aspect("equal", adjustable="box")
 
     # one line per device
     azimuth_lines   = {}
     dev_positions   = {}
+    theta = np.linspace(0, 2 * np.pi, 360)
+    # one blue dot per device with a label
     for i, name in enumerate(dev_names):
-        line,   = ax.plot([], [], "-", color="blue", linewidth=1)
+        ax.scatter(dev_x_pos[i], dev_y_pos[i], s=50, color="blue")
+        dx_lbl, dy_lbl = dev_labels[i] 
+        ax.text(dev_x_pos[i] + dx_lbl, dev_y_pos[i] + dy_lbl, name, fontsize=8, color="blue")
+
+        # circle around each 
+        ax.plot(dev_x_pos[i] + small_rad * np.cos(theta),dev_y_pos[i] + small_rad * np.sin(theta),color="none", linewidth=0.8)
+
+        line,   = ax.plot([], [], "-", color="blue", linewidth=.9)
         azimuth_lines[name]   = line
         dev_positions[name]   = (dev_x_pos[i], dev_y_pos[i])
 
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
+    # lines through (0,0)
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.axvline(0, color="black", linewidth=0.8)
+
+    # # circle
+    # theta = np.linspace(0, 2 * np.pi, 360)
+    # ax.plot(circle_radius * np.cos(theta), circle_radius * np.sin(theta), color="gray", linewidth=0.5)
+
+    # # one line per device
+    # azimuth_lines   = {}
+    # dev_positions   = {}
+    # for i, name in enumerate(dev_names):
+    #     line,   = ax.plot([], [], "-", color="blue", linewidth=1)
+    #     azimuth_lines[name]   = line
+    #     dev_positions[name]   = (dev_x_pos[i], dev_y_pos[i])
+
     ax.set_title("Sound Localization")
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.yaxis.set_major_locator(MultipleLocator(1))
     ax.set_xticklabels([])
     ax.set_yticklabels([])
     ax.grid(True)
 
-    # removes borerlines 
+    ax.set_xlim(-3, 3)
+    ax.set_ylim(-3, 3)
+
+    #removes border lines 
     for spine in ax.spines.values(): # ax.spines are the four border lines 
         spine.set_visible(False)
-    figure.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
 
     canvas.draw()
 
@@ -87,5 +101,15 @@ def createSoundLoc(tab, dev_names, sound_loc_btn):
     btn_row.addWidget(sound_loc_btn)
     btn_row.addStretch()
     layout.addLayout(btn_row)
+
+    def on_scroll(event, ax, canvas):
+        scale = 0.9 if event.button == 'up' else 1.1
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        ax.set_xlim([x * scale for x in xlim])
+        ax.set_ylim([y * scale for y in ylim])
+        canvas.draw_idle()
+
+    canvas.mpl_connect('scroll_event', lambda event: on_scroll(event, ax, canvas))
 
     return azimuth_lines, dev_positions, canvas, act_int_thresh_entry

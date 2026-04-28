@@ -91,15 +91,17 @@ class PlotActiveIntensityWorker(QObject):
         # ---------- data acquisition loop ----------
         self.progress.emit('')
 
-        while self.running: 
-            for name, connection in self.connection.items():               
-                msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout=0.1)   #blocking=False to cycle through all drones instead of blocking on one
-                #print(msg)
+        while self.running:
+            changed = False
+            for name, connection in self.connection.items():
+                msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False) #, timeout=0.1)   #blocking=False to cycle through all drones instead of blocking on one
 
-                #check if msg arrived 
-                if msg: 
-                    # emit data via signal instead of putting it in a queue
+                if msg:
                     self.dataReady.emit(name, msg.time_utc_usec, msg.device_id, msg.active_intensity, msg.azimuth_deg, msg.histogram_count, msg.q_factor)
+                    changed = True
+
+            if changed: # only update when receive new data
+                self.plotUpdated.emit()
 
     @pyqtSlot(str,int, int, float, float, int, float) 
     def plotActiveIntensity(self, name,t, id, act, az, hist_count, q_factor):
@@ -143,8 +145,6 @@ class PlotActiveIntensityWorker(QObject):
 
         self.intAx.set_xlim(t_min, t_max)
         self.azAx.set_xlim(t_min, t_max)
-
-        self.plotUpdated.emit()  # redraws canvas on the main thread
 
 
 #        # full redraw so axes update

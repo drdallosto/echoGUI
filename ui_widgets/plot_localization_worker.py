@@ -1,6 +1,6 @@
 #plot_localization_worker.py
 from ui_widgets.send_msg_id_stream import sendMsgIdStream
-from ui_widgets.create_sound_loc_plot import circle_radius
+from ui_widgets.create_sound_loc_plot import small_rad
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 import numpy as np
 
@@ -10,7 +10,7 @@ class PlotLocalizationWorker(QObject):
     progress  = pyqtSignal(str)
     error     = pyqtSignal(str)
     finished  = pyqtSignal()
-    dataReady = pyqtSignal(str, float, float)  # (device_name, azimuth_deg, active_intensity)
+    dataReady = pyqtSignal(str, float, float,float)  # (device_name, azimuth_deg, active_intensity)
 
     def __init__(self, getDevConns, azimuth_lines, dev_positions, canvas, act_int_thresh_entry):
         super().__init__()
@@ -50,10 +50,10 @@ class PlotLocalizationWorker(QObject):
             for name, connection in self.connection.items():
                 msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout=0.1)
                 if msg:
-                    self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity))
+                    self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity), float(msg.yaw)) 
 
-    @pyqtSlot(str, float, float)
-    def plotAzimuth(self, name, azimuth_deg, active_intensity):
+    @pyqtSlot(str, float, float,float)
+    def plotAzimuth(self, name, azimuth_deg, active_intensity, yaw):
         if name not in self.azimuth_lines:
             return
 
@@ -62,16 +62,17 @@ class PlotLocalizationWorker(QObject):
             threshold = int(self.act_int_thresh_entry.text())
         except ValueError:
             return
-
+        
+        scale_lines = 8
         if active_intensity >= threshold:
-            rad = np.radians(90 - azimuth_deg)
-            x = circle_radius * np.cos(rad)
-            y = circle_radius * np.sin(rad)
-            # self.azimuth_markers[name].set_data([x], [y])
-            dot_x, dot_y = self.dev_positions[name]
-            self.azimuth_lines[name].set_data([dot_x, x], [dot_y, y]) #draw line beetween points
+            x0, y0 = self.dev_positions[name]
+            #print(name,yaw,azimuth_deg)
+            #azimuth_deg = 45
+            rad = np.radians((90 - azimuth_deg)) # - yaw)
+            x = x0 + scale_lines * small_rad * np.cos(rad)
+            y = y0 + scale_lines * small_rad * np.sin(rad)      
+            self.azimuth_lines[name].set_data([x0, x], [y0, y]) #draw line beetween points
         else:
-            # self.azimuth_markers[name].set_data([], [])
             self.azimuth_lines[name].set_data([], [])
 
         self.canvas.draw_idle()

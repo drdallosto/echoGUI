@@ -45,10 +45,11 @@ def createActIntPlot(tab2,plot_act_int_btn,dev_names):
     act_int_lines = {}
     azm_lines     = {}
     colors = ["black", "blue", "green", "red"]   
+    m = ['none','*']
 
     for i,name in enumerate(dev_names):
         # Create empty line objects
-        act_int_line, = intAx.plot([], [], color = colors[i], label=name)
+        act_int_line, = intAx.plot([], [],  marker=m[i], color = colors[i], label=name)
         azm_line, = azAx.plot([], [], marker='o', linestyle='None', color = colors[i], label=name)
 
         azm_lines[name]=azm_line
