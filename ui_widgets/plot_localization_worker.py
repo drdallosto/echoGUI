@@ -34,8 +34,6 @@ class PlotLocalizationWorker(QObject):
     def stop(self):
         self.running = False
 
-        # for marker in self.azimuth_markers.values():
-        #     marker.set_data([], [])
         for line in self.azimuth_lines.values():
             line.set_data([], [])
         self.canvas.draw_idle()
@@ -47,10 +45,15 @@ class PlotLocalizationWorker(QObject):
             sendMsgIdStream(connection, message_id)
 
         while self.running:
+            changed = False
             for name, connection in self.connection.items():
                 msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout=0.1)
                 if msg:
-                    self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity), float(msg.yaw)) 
+                    self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity), float(msg.yaw))
+                    changed = True
+
+            if changed:
+                self.canvas.draw_idle()
 
     @pyqtSlot(str, float, float,float)
     def plotAzimuth(self, name, azimuth_deg, active_intensity, yaw):
@@ -71,8 +74,6 @@ class PlotLocalizationWorker(QObject):
             rad = np.radians((90 - azimuth_deg)) # - yaw)
             x = x0 + scale_lines * small_rad * np.cos(rad)
             y = y0 + scale_lines * small_rad * np.sin(rad)      
-            self.azimuth_lines[name].set_data([x0, x], [y0, y]) #draw line beetween points
+            self.azimuth_lines[name].set_data([x0, x], [y0, y])
         else:
             self.azimuth_lines[name].set_data([], [])
-
-        self.canvas.draw_idle()

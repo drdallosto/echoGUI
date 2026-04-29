@@ -83,7 +83,9 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
     def get_available_ports(self):
         ports = QSerialPortInfo.availablePorts()
         for port in ports:
-            self.portList.append(port.portName())
+            if port.description() == "Silicon Labs CP210x USB to UART Bridge Silicon Labs" or "ARK FPV.x ARK":
+                self.portList.append(port.portName())
+         
         print("Available Serial Ports:", self.portList)
         print('')
 

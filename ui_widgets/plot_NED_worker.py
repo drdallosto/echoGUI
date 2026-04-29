@@ -73,21 +73,17 @@ class PlotNEDWorker(QObject):
         # if not connection:
         #     return
         
-        while self.running:  
-            for name, connection in self.connection.items(): 
-            
-                msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout=0.1)   #blocking=False to cycle through all drones instead of blocking on one
-                #print(msg)
+        while self.running:
+            changed = False
+            for name, connection in self.connection.items():
+                msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout=0.1)
 
-                #check if msg arrived 
-                if msg: 
-                    north = msg.north
-                    east = msg.east
-                    down = msg.down
-                    t= msg.time_utc_usec
+                if msg:
+                    self.ned_dataReady.emit(name, msg.north, msg.east, msg.down, msg.time_utc_usec)
+                    changed = True
 
-                    # emit data via signal instead of putting it in a queue
-                    self.ned_dataReady.emit(name,north,east,down,t)
+            if changed:
+                self.canvasNED.draw_idle()
 
     @pyqtSlot(str,float, float, float, int) 
     def plotNED(self,name,north,east,down,t):
@@ -120,5 +116,3 @@ class PlotNEDWorker(QObject):
             self.axNED.set_xlim(min(all_north), max(all_north))
             self.axNED.set_ylim(min(all_east), max(all_east))
             self.axNED.set_zlim(min(all_down), max(all_down))
-        
-        self.canvasNED.draw_idle() # 
