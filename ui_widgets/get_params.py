@@ -6,9 +6,10 @@ from pymavlink import mavutil
 
 ''' Function to get both haptic and ares parameters from the vehicle '''
 
-def getParams(connection, all_params, storeHapParams): #, storeAvsParams):
+def getParams(connection, all_params, storeHapParams, dev_name=None):
 
-    
+    print(f'\n---- getting parameters from {dev_name or "device"} ----\n')
+
     for name in all_params:
         connection.mav.param_request_read_send(
             connection.target_system,

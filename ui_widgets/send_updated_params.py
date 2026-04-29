@@ -3,14 +3,14 @@
 import struct
 from pymavlink import mavutil
 
-def sendUpdatedParams(connection, updateHapParams, updateAvsParams):
+def sendUpdatedParams(connection, updateHapParams): #, updateAvsParams):
 
-    all_updated_params = updateHapParams | updateAvsParams # combine the two dictionaries into one
-    #print(all_updated_params)
+    # all_updated_params = updateHapParams | updateAvsParams # combine the two dictionaries into one
+    # #print(all_updated_params)
 
     print("---- Updated Haptic Parameters ----")
 
-    for param_name, entry_field in all_updated_params.items():
+    for param_name, entry_field in updateHapParams.items(): #all_updated_params.items():
         get_param_value = entry_field.text()   # get the text from the entry field
 
         if (param_name in ('HAP_SENSE_AVS_R', 'HAP_MODE', 'HAP_IMU_UP_DOWN',

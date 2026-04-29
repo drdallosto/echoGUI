@@ -3,14 +3,16 @@ from ui_widgets.send_msg_id_stream import sendMsgIdStream
 from ui_widgets.create_sound_loc_plot import small_rad
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 import numpy as np
+import os, csv, datetime, time
 
 
 class PlotLocalizationWorker(QObject):
 
-    progress  = pyqtSignal(str)
-    error     = pyqtSignal(str)
-    finished  = pyqtSignal()
-    dataReady = pyqtSignal(str, float, float,float)  # (device_name, azimuth_deg, active_intensity)
+    progress   = pyqtSignal(str)
+    error      = pyqtSignal(str)
+    finished   = pyqtSignal()
+    dataReady  = pyqtSignal(str, float, float, float)  # (device_name, azimuth_deg, active_intensity, yaw)
+    logStopped = pyqtSignal()
 
     def __init__(self, getDevConns, azimuth_lines, dev_positions, canvas, act_int_thresh_entry):
         super().__init__()
@@ -20,6 +22,10 @@ class PlotLocalizationWorker(QObject):
         self.canvas               = canvas
         self.act_int_thresh_entry = act_int_thresh_entry
         self.running              = True
+        self._logging             = False
+        self._csv_file            = None
+        self._csv_writer          = None
+        self._log_end_timer       = None
 
         self.dataReady.connect(self.plotAzimuth)
 
@@ -33,10 +39,33 @@ class PlotLocalizationWorker(QObject):
 
     def stop(self):
         self.running = False
-
+        self.stop_logging()
         for line in self.azimuth_lines.values():
             line.set_data([], [])
         self.canvas.draw_idle()
+
+    def start_logging(self, end_timer):
+        dirName = 'sensor_avs_logging_data'
+        os.makedirs(dirName, exist_ok=True)
+        timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        csv_path = os.path.join(dirName, f"{timestamp_str}.csv")
+        fieldnames = ['device', 'node_id', 'time_utc_usec', 'active_intensity', 'q_factor',
+                      'histogram_count', 'azimuth', 'elevation', 'yaw', 'pitch', 'roll',
+                      'north', 'east', 'down']
+        self._csv_file   = open(csv_path, mode='a', newline='')
+        self._csv_writer = csv.DictWriter(self._csv_file, fieldnames=fieldnames)
+        self._csv_writer.writeheader()
+        self._log_end_timer = end_timer
+        self._logging = True
+        self.progress.emit(f'writing to csv: {csv_path}')
+
+    def stop_logging(self):
+        self._logging = False
+        if self._csv_file:
+            self._csv_file.close()
+            self._csv_file   = None
+            self._csv_writer = None
+        self.progress.emit('stopped logging')
 
     def getAzimuth(self):
         message_id = 297
@@ -51,6 +80,29 @@ class PlotLocalizationWorker(QObject):
                 if msg:
                     self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity), float(msg.yaw))
                     changed = True
+
+                    if self._logging and self._csv_writer:
+                        if time.time() < self._log_end_timer:
+                            self._csv_writer.writerow({
+                                'device':           name,
+                                'node_id':          msg.device_id,
+                                'time_utc_usec':    msg.time_utc_usec,
+                                'active_intensity': msg.active_intensity,
+                                'q_factor':         msg.q_factor,
+                                'histogram_count':  msg.histogram_count,
+                                'azimuth':          msg.azimuth_deg,
+                                'elevation':        msg.elevation_deg,
+                                'yaw':              msg.yaw,
+                                'pitch':            msg.pitch,
+                                'roll':             msg.roll,
+                                'north':            msg.north,
+                                'east':             msg.east,
+                                'down':             msg.down
+                            })
+                            self._csv_file.flush()
+                        else:
+                            self.stop_logging()
+                            self.logStopped.emit()
 
             if changed:
                 self.canvas.draw_idle()

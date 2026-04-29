@@ -16,7 +16,7 @@ dev_y_pos = [ 1,  1, -1, -1]
 dev_labels = [(-0.3, 0.2), (0.1, 0.2), (0.1, -0.3), (-0.3, -0.3)]
 
 
-def createSoundLoc(tab, dev_names, sound_loc_btn):
+def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
     figure = Figure()
     canvas = FigureCanvas(figure)
     canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -99,6 +99,8 @@ def createSoundLoc(tab, dev_names, sound_loc_btn):
     btn_row = QHBoxLayout()
     btn_row.addStretch()
     btn_row.addWidget(sound_loc_btn)
+    btn_row.addSpacing(20)
+    btn_row.addWidget(log_data_btn)
     btn_row.addStretch()
     layout.addLayout(btn_row)
 
