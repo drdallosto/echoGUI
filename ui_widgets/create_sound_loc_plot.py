@@ -39,6 +39,24 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
     act_int_thresh_entry.setStyleSheet("QLineEdit { background-color: white; }")
     top_layout.addWidget(act_int_lbl)
     top_layout.addWidget(act_int_thresh_entry)
+    top_layout.addSpacing(20)
+
+    q_factor_lbl = QLabel("Q-Factor\nThreshold")
+    q_factor_lbl.setFont(bold_font)
+    q_thresh_entry = QLineEdit("2")
+    q_thresh_entry.setFixedWidth(75)
+    q_thresh_entry.setStyleSheet("QLineEdit { background-color: white; }")
+    top_layout.addWidget(q_factor_lbl)
+    top_layout.addWidget(q_thresh_entry)
+    top_layout.addSpacing(20)
+
+    hist_lbl = QLabel("Histogram\nThreshold")
+    hist_lbl.setFont(bold_font)
+    hist_thresh_entry = QLineEdit("5")
+    hist_thresh_entry.setFixedWidth(75)
+    hist_thresh_entry.setStyleSheet("QLineEdit { background-color: white; }")
+    top_layout.addWidget(hist_lbl)
+    top_layout.addWidget(hist_thresh_entry)
     top_layout.addStretch()
 
     layout.addWidget(top_widget)
@@ -114,4 +132,4 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
 
     canvas.mpl_connect('scroll_event', lambda event: on_scroll(event, ax, canvas))
 
-    return azimuth_lines, dev_positions, canvas, act_int_thresh_entry
+    return azimuth_lines, dev_positions, canvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry

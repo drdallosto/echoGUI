@@ -45,7 +45,7 @@ def createActIntPlot(tab2,plot_act_int_btn,dev_names):
     act_int_lines = {}
     azm_lines     = {}
     colors = ["black", "blue", "green", "red"]   
-    m = ['none','*']
+    m = ['none','*', '.', 'none']
 
     for i,name in enumerate(dev_names):
         # Create empty line objects

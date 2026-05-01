@@ -11,16 +11,18 @@ class PlotLocalizationWorker(QObject):
     progress   = pyqtSignal(str)
     error      = pyqtSignal(str)
     finished   = pyqtSignal()
-    dataReady  = pyqtSignal(str, float, float, float)  # (device_name, azimuth_deg, active_intensity, yaw)
+    dataReady  = pyqtSignal(str, float, float, float, float, float)  # (device_name, azimuth_deg, active_intensity, yaw, q_factor, histogram_count)
     logStopped = pyqtSignal()
 
-    def __init__(self, getDevConns, azimuth_lines, dev_positions, canvas, act_int_thresh_entry):
+    def __init__(self, getDevConns, azimuth_lines, dev_positions, canvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry):
         super().__init__()
         self.connection           = getDevConns
         self.azimuth_lines        = azimuth_lines
         self.dev_positions        = dev_positions
         self.canvas               = canvas
         self.act_int_thresh_entry = act_int_thresh_entry
+        self.q_thresh_entry       = q_thresh_entry
+        self.hist_thresh_entry    = hist_thresh_entry
         self.running              = True
         self._logging             = False
         self._csv_file            = None
@@ -39,7 +41,8 @@ class PlotLocalizationWorker(QObject):
 
     def stop(self):
         self.running = False
-        self.stop_logging()
+        if self._logging:
+            self.stop_logging()
         for line in self.azimuth_lines.values():
             line.set_data([], [])
         self.canvas.draw_idle()
@@ -65,7 +68,7 @@ class PlotLocalizationWorker(QObject):
             self._csv_file.close()
             self._csv_file   = None
             self._csv_writer = None
-        self.progress.emit('stopped logging')
+            self.progress.emit('stopped logging')
 
     def getAzimuth(self):
         message_id = 297
@@ -78,7 +81,7 @@ class PlotLocalizationWorker(QObject):
             for name, connection in self.connection.items():
                 msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout=0.1)
                 if msg:
-                    self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity), float(msg.yaw))
+                    self.dataReady.emit(name, float(msg.azimuth_deg), float(msg.active_intensity), float(msg.yaw), float(msg.q_factor), float(msg.histogram_count))
                     changed = True
 
                     if self._logging and self._csv_writer:
@@ -107,19 +110,21 @@ class PlotLocalizationWorker(QObject):
             if changed:
                 self.canvas.draw_idle()
 
-    @pyqtSlot(str, float, float,float)
-    def plotAzimuth(self, name, azimuth_deg, active_intensity, yaw):
+    @pyqtSlot(str, float, float, float, float, float)
+    def plotAzimuth(self, name, azimuth_deg, active_intensity, yaw, q_factor, histogram_count):
         if name not in self.azimuth_lines:
             return
 
-        # so gui doesn't crash when typing the entry in 
+        # so gui doesn't crash when typing the entry in
         try:
-            threshold = int(self.act_int_thresh_entry.text())
+            act_threshold  = int(self.act_int_thresh_entry.text())
+            q_threshold    = float(self.q_thresh_entry.text())
+            hist_threshold = float(self.hist_thresh_entry.text())
         except ValueError:
             return
-        
+
         scale_lines = 8
-        if active_intensity >= threshold:
+        if active_intensity >= act_threshold and q_factor >= q_threshold and histogram_count >= hist_threshold:
             x0, y0 = self.dev_positions[name]
             #print(name,yaw,azimuth_deg)
             #azimuth_deg = 45

@@ -17,14 +17,14 @@ def getParams(connection, all_params, storeHapParams, dev_name=None):
             name.encode('utf-8'),
             -1)
 
-        time.sleep(0.5) #0.08)
+        time.sleep(8) #0.08)
 
-        message = connection.recv_match(type='PARAM_VALUE', blocking=True, timeout=0.2)
+        message = connection.recv_match(type='PARAM_VALUE', blocking=True, timeout=4)
 
         if message is None:
+            # print(f'WARNING: no response for {name}')
+            # continue
             break
-
-        print('getting parameters...')
 
         #print(f"{message.param_id}: {message.param_type}, {message.param_value}\n")
 

@@ -79,10 +79,15 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         
         self.ned_lines,self.axNED, self.canvasNED = createNEDPlot(self.tab3,self.plot_ned_btn,list(self.getDevConns.keys()))
 
-        self.azimuth_lines, self.dev_positions, self.devLocCanvas, self.loc_act_int_thresh_entry = createSoundLoc(self.tab4,
-                                                                                                                  list(self.getDevConns.keys()),
-                                                                                                                  self.sound_loc_btn,
-                                                                                                                  self.log_data_btn_loc)
+        (self.azimuth_lines,
+        self.dev_positions,
+        self.devLocCanvas,
+        self.loc_act_int_thresh_entry,
+        self.loc_q_thresh_entry,
+        self.loc_hist_thresh_entry) = createSoundLoc(self.tab4,
+                                                      list(self.getDevConns.keys()),
+                                                      self.sound_loc_btn,
+                                                      self.log_data_btn_loc)
 
         self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
 
@@ -249,11 +254,13 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
 
     def setup_localization_thread(self):
         self.loc_thread = QThread()
-        self.loc_worker = PlotLocalizationWorker(self.getDevConns, 
-                                                 self.azimuth_lines, 
-                                                 self.dev_positions, 
-                                                 self.devLocCanvas, 
-                                                 self.loc_act_int_thresh_entry)
+        self.loc_worker = PlotLocalizationWorker(self.getDevConns,
+                                                 self.azimuth_lines,
+                                                 self.dev_positions,
+                                                 self.devLocCanvas,
+                                                 self.loc_act_int_thresh_entry,
+                                                 self.loc_q_thresh_entry,
+                                                 self.loc_hist_thresh_entry)
         self.loc_worker.moveToThread(self.loc_thread)
         self.loc_thread.started.connect(self.loc_worker.run)
         self.loc_worker.finished.connect(self.loc_thread.quit)
@@ -323,17 +330,17 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         else:
             self.end_timer = setTimer(self.timerEntry)
             if loc_running:
-                self.loc_worker.logStopped.connect(self._onLocLogStopped)
+                self.loc_worker.logStopped.connect(self.onLocLogStopped)
                 self.loc_worker.start_logging(self.end_timer)
             else:
                 self.setup_log_data_loc_thread()
             self.log_data_btn_loc.setText("STOP")
             self.log_data_btn_loc.setStyleSheet("background-color: white; color: gray; font-weight: bold; font-size: 14px;")
 
-    def _onLocLogStopped(self):
+    def onLocLogStopped(self):
         self.log_data_btn_loc.setText("LOG DATA")
         self.log_data_btn_loc.setStyleSheet("background-color: gray; color: white; font-weight: bold; font-size: 14px;")
-        self.loc_worker.logStopped.disconnect(self._onLocLogStopped)
+        self.loc_worker.logStopped.disconnect(self.onLocLogStopped)
 
     def onPlotActIntClicked(self):
         # #disableStreams(self.connection) # stop sensor and avs streams before logging to avoid conflicts
@@ -369,7 +376,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
             self.setup_localization_thread()
 
             if standalone_logging:
-                self.loc_worker.logStopped.connect(self._onLocLogStopped)
+                self.loc_worker.logStopped.connect(self.onLocLogStopped)
                 self.loc_worker.start_logging(remaining)
 
     def onPlotNedClicked(self):
