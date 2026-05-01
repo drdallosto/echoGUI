@@ -89,7 +89,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
                                                       self.sound_loc_btn,
                                                       self.log_data_btn_loc)
 
-        self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
+#        self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
 
         QTimer.singleShot(0, lambda: syncTimeAtStart(self.getDevConns))  # sync time once gui is launched
 
