@@ -6,10 +6,10 @@ from PyQt6.QtSerialPort import QSerialPortInfo
 from PyQt6.QtCore import Qt, QSize, QObject, QThread, pyqtSignal, QTimer
 from pymavlink import mavutil
 
-from ui_widgets.parameters import all_params, hap_description #, avs_description
-from ui_widgets.get_params import getParams
-from ui_widgets.display_params import displayParams
-from ui_widgets.send_updated_params import sendUpdatedParams
+# from ui_widgets.parameters import all_params, hap_description #, avs_description
+# from ui_widgets.get_params import getParams
+# from ui_widgets.display_params import displayParams
+# from ui_widgets.send_updated_params import sendUpdatedParams
 from ui_widgets.stop_sensor_avs_streams import disableStreams
 
 from ui_widgets.set_sync_time import setTimer #, sync_time, log_data
@@ -22,7 +22,7 @@ from ui_widgets.create_NED_plot import createNEDPlot
 from ui_widgets.plot_NED_worker import PlotNEDWorker
 from ui_widgets.create_sound_loc_plot import createSoundLoc
 from ui_widgets.plot_localization_worker import PlotLocalizationWorker
-from ui_widgets.param_fetch_worker import ParamFetchWorker
+#from ui_widgets.param_fetch_worker import ParamFetchWorker
 
 
 # or subclass QMainWindow
@@ -59,14 +59,14 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         first_conn = self.getDevConns[first_name]
         while first_conn.recv_match(blocking=False) is not None:
             pass
-        getParams(first_conn, all_params, self.storeHapParams, dev_name=first_name)
-        self.updateHapParams, self.timerEntry, self.dev_combo = displayParams(self.tab1,
-                                                              self.storeHapParams,
-                                                              hap_description,
-                                                              self.update_param_btn,
-                                                              self.log_data_btn,
-                                                              self.sync_time_btn,
-                                                              list(self.getDevConns.keys())) 
+        # getParams(first_conn, all_params, self.storeHapParams, dev_name=first_name)
+        # self.updateHapParams, self.timerEntry, self.dev_combo = displayParams(self.tab1,
+        #                                                       self.storeHapParams,
+        #                                                       hap_description,
+        #                                                       self.update_param_btn,
+        #                                                       self.log_data_btn,
+        #                                                       self.sync_time_btn,
+        #                                                       list(self.getDevConns.keys())) 
                                                              # pass the button instances to displayParams to connect them to their respective functions
         (self.act_int_lines,
         self.azm_lines,
@@ -127,28 +127,28 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         self.tab3 = QWidget()
         self.tab4 = QWidget()
 
-        self.tabs.addTab(self.tab1, "PARAMETERS")
+        #self.tabs.addTab(self.tab1, "PARAMETERS")
         self.tabs.addTab(self.tab2, "VISUALS")
         self.tabs.addTab(self.tab3, "NED")
         self.tabs.addTab(self.tab4, "SOUND LOCALIZATION")
 
-        self.update_param_btn = QPushButton("UPDATE PARAMS")
-        self.update_param_btn.setFixedWidth(140)
-        self.update_param_btn.setFixedHeight(30)
-        self.update_param_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
-        self.update_param_btn.clicked.connect(self.onUpdateParamsClicked)
+        # self.update_param_btn = QPushButton("UPDATE PARAMS")
+        # self.update_param_btn.setFixedWidth(140)
+        # self.update_param_btn.setFixedHeight(30)
+        # self.update_param_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        # self.update_param_btn.clicked.connect(self.onUpdateParamsClicked)
 
-        self.log_data_btn = QPushButton("LOG DATA")
-        self.log_data_btn.setFixedWidth(110)
-        self.log_data_btn.setFixedHeight(30)
-        self.log_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
-        self.log_data_btn.clicked.connect(self.onLogDataClicked)
+        # self.log_data_btn = QPushButton("LOG DATA")
+        # self.log_data_btn.setFixedWidth(110)
+        # self.log_data_btn.setFixedHeight(30)
+        # self.log_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        # self.log_data_btn.clicked.connect(self.onLogDataClicked)
 
-        self.sync_time_btn = QPushButton("SYNC TIME")
-        self.sync_time_btn.setFixedWidth(110)
-        self.sync_time_btn.setFixedHeight(30)
-        self.sync_time_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
-        self.sync_time_btn.clicked.connect(self.onSyncTimeClicked)
+        # self.sync_time_btn = QPushButton("SYNC TIME")
+        # self.sync_time_btn.setFixedWidth(110)
+        # self.sync_time_btn.setFixedHeight(30)
+        # self.sync_time_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        # self.sync_time_btn.clicked.connect(self.onSyncTimeClicked)
         
         self.plot_act_int_btn = QPushButton("PLOT ACTIVE INTENSITY")
         self.plot_act_int_btn.setFixedWidth(175)
@@ -276,34 +276,34 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
     # def on_log_error(self, err: str):
     #     print(f"[ERROR] {err}")
 
-    def onDeviceChanged(self):
-        selected = self.dev_combo.currentText()
-        conn = self.getDevConns[selected]
+    # def onDeviceChanged(self):
+    #     selected = self.dev_combo.currentText()
+    #     conn = self.getDevConns[selected]
 
-        self.dev_combo.setEnabled(False)
+    #     self.dev_combo.setEnabled(False)
 
-        self.param_fetch_thread = QThread()
-        self.param_fetch_worker = ParamFetchWorker(conn, all_params, selected)
-        self.param_fetch_worker.moveToThread(self.param_fetch_thread)
-        self.param_fetch_thread.started.connect(self.param_fetch_worker.run)
-        self.param_fetch_worker.finished.connect(self.param_fetch_thread.quit)
-        self.param_fetch_worker.finished.connect(self.applyParams)
-        self.param_fetch_thread.start()
+    #     self.param_fetch_thread = QThread()
+    #     self.param_fetch_worker = ParamFetchWorker(conn, all_params, selected)
+    #     self.param_fetch_worker.moveToThread(self.param_fetch_thread)
+    #     self.param_fetch_thread.started.connect(self.param_fetch_worker.run)
+    #     self.param_fetch_worker.finished.connect(self.param_fetch_thread.quit)
+    #     self.param_fetch_worker.finished.connect(self.applyParams)
+    #     self.param_fetch_thread.start()
 
-    def applyParams(self, new_params, dev_name):
-        # discard result if user switched device again before fetch completed
-        if dev_name != self.dev_combo.currentText():
-            self.dev_combo.setEnabled(True)
-            return
-        for name, entry in self.updateHapParams.items():
-            if name in new_params:
-                entry.setText(str(new_params[name]))
-        self.dev_combo.setEnabled(True)
+    # def applyParams(self, new_params, dev_name):
+    #     # discard result if user switched device again before fetch completed
+    #     if dev_name != self.dev_combo.currentText():
+    #         self.dev_combo.setEnabled(True)
+    #         return
+    #     for name, entry in self.updateHapParams.items():
+    #         if name in new_params:
+    #             entry.setText(str(new_params[name]))
+    #     self.dev_combo.setEnabled(True)
 
-    def onUpdateParamsClicked(self):
-        selected = self.dev_combo.currentText()
-        conn = self.getDevConns[selected]
-        sendUpdatedParams(conn, self.updateHapParams)
+    # def onUpdateParamsClicked(self):
+    #     selected = self.dev_combo.currentText()
+    #     conn = self.getDevConns[selected]
+    #     sendUpdatedParams(conn, self.updateHapParams)
 
     def onSyncTimeClicked(self):
         syncTimeAtStart(self.getDevConns)
