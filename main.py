@@ -11,6 +11,9 @@ from pymavlink import mavutil
 # from ui_widgets.display_params import displayParams
 # from ui_widgets.send_updated_params import sendUpdatedParams
 from ui_widgets.stop_sensor_avs_streams import disableStreams
+from ui_widgets.send_cap_commands import CapWorker, CapOffWorker
+
+from ui_widgets.parameters_cap import cap_params_description, cap_params, cap_params_values
 
 from ui_widgets.set_sync_time import setTimer #, sync_time, log_data
 from ui_widgets.sync_time_at_start import syncTimeAtStart
@@ -50,15 +53,10 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         self.get_connected()
         self.setupUI()
 
-        # # Connect to the flight controller
-        # self.connection = mavutil.mavlink_connection(device=self.portList[0], baud=57600)
-        # self.connection.wait_heartbeat(timeout=8)
-        # print("Heartbeat received\n")
-
-        first_name = next(iter(self.getDevConns.keys()))
-        first_conn = self.getDevConns[first_name]
-        while first_conn.recv_match(blocking=False) is not None:
-            pass
+        # first_name = next(iter(self.getDevConns.keys()))
+        # first_conn = self.getDevConns[first_name]
+        # while first_conn.recv_match(blocking=False) is not None:
+        #     pass
         # getParams(first_conn, all_params, self.storeHapParams, dev_name=first_name)
         # self.updateHapParams, self.timerEntry, self.dev_combo = displayParams(self.tab1,
         #                                                       self.storeHapParams,
@@ -75,7 +73,10 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         self.intCanvas,
         self.act_int_thresh_entry,
         self.q_thresh_entry,
-        self.hist_thresh_entry) = createActIntPlot(self.tab2,self.plot_act_int_btn,list(self.getDevConns.keys()))
+        self.hist_thresh_entry,
+        self.log_data_entry) = createActIntPlot(self.tab2,self.plot_act_int_btn, self.cap_btn,
+                                            self.log_csv_data_btn, self.cap_off_data_btn, 
+                                            list(self.getDevConns.keys()))
         
         self.ned_lines,self.axNED, self.canvasNED = createNEDPlot(self.tab3,self.plot_ned_btn,list(self.getDevConns.keys()))
 
@@ -89,7 +90,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
                                                       self.sound_loc_btn,
                                                       self.log_data_btn_loc)
 
-        self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
+        #self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
 
         QTimer.singleShot(0, lambda: syncTimeAtStart(self.getDevConns))  # sync time once gui is launched
 
@@ -98,8 +99,8 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         for port in ports:
             if port.description() == "Silicon Labs CP210x USB to UART Bridge Silicon Labs" or "ARK FPV.x ARK" or "Silicon Labs CP210x USB to UART Bridge" or "CP2102 USB to UART Bridge Controller":
                 self.portList.append(port.portName())
-                print(port.portName)
-                print(port.description())
+                # print(port.portName)
+                # print(port.description())
         print("Available Serial Ports:", self.portList)
         print('')
 
@@ -138,11 +139,11 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         # self.update_param_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
         # self.update_param_btn.clicked.connect(self.onUpdateParamsClicked)
 
-        # self.log_data_btn = QPushButton("LOG DATA")
-        # self.log_data_btn.setFixedWidth(110)
-        # self.log_data_btn.setFixedHeight(30)
-        # self.log_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
-        # self.log_data_btn.clicked.connect(self.onLogDataClicked)
+        self.log_data_btn = QPushButton("LOG DATA")
+        self.log_data_btn.setFixedWidth(110)
+        self.log_data_btn.setFixedHeight(30)
+        self.log_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        self.log_data_btn.clicked.connect(self.onLogDataClicked)
 
         # self.sync_time_btn = QPushButton("SYNC TIME")
         # self.sync_time_btn.setFixedWidth(110)
@@ -174,24 +175,87 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
         self.log_data_btn_loc.setStyleSheet("background-color: gray; color: white; font-weight: bold; font-size: 14px;")
         self.log_data_btn_loc.clicked.connect(self.onLogDataLocClicked)
 
+        self.cap_btn = QPushButton("CAP ON")
+        self.cap_btn.setFixedWidth(120)
+        self.cap_btn.setFixedHeight(30)
+        self.cap_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        self.cap_btn.clicked.connect(self.onCapClicked)
+
+        self.log_csv_data_btn = QPushButton("LOG CSV DATA")
+        self.log_csv_data_btn.setFixedWidth(120)
+        self.log_csv_data_btn.setFixedHeight(30)
+        self.log_csv_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        self.log_csv_data_btn.clicked.connect(self.onLogCsvDataClicked)
+
+        self.cap_off_data_btn = QPushButton("CAP OFF")
+        self.cap_off_data_btn.setFixedWidth(120)
+        self.cap_off_data_btn.setFixedHeight(30)
+        self.cap_off_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        self.cap_off_data_btn.clicked.connect(self.onCapOffClicked)
+
         self.layout_tabs.addWidget(self.tabs)
         self.setLayout(self.layout_tabs)
 
-    def setup_log_data_thread(self):
+    # def setup_log_data_thread(self):
 
-        self.thread = QThread()
-        self.worker = LogDataWorker(self.getDevConns, self.end_timer)
-        self.worker.moveToThread(self.thread) #Move worker to the thread
+    #     self.thread = QThread()
+    #     self.worker = LogDataWorker(self.getDevConns, self.end_timer)
+    #     self.worker.moveToThread(self.thread) #Move worker to the thread
+
+    #     # Connect signals and slots
+    #     self.thread.started.connect(self.worker.run)
+    #     self.worker.finished.connect(self.thread.quit)
+    #     self.worker.finished.connect(self.worker.deleteLater)
+    #     self.thread.finished.connect(self.thread.deleteLater)
+    #     self.worker.progress.connect(self.on_log_message)  # optional
+    #     # self.worker.error.connect(self.on_log_error)    
+    
+    #     self.thread.start()  # Start the thread
+
+    def setup_cap_thread(self):
+
+        self.cap_thread = QThread()
+        self.cap_worker = LogDataWorker(self.getDevConns, self.end_timer)
+        self.cap_worker.moveToThread(self.cap_thread) #Move worker to the thread
 
         # Connect signals and slots
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.progress.connect(self.on_log_message)  # optional
+        self.cap_thread.started.connect(self.cap_worker.run)
+        self.cap_worker.finished.connect(self.cap_thread.quit)
+        self.cap_worker.finished.connect(self.cap_worker.deleteLater)
+        self.cap_thread.finished.connect(self.cap_thread.deleteLater)
+        self.cap_worker.progress.connect(self.on_log_message)  # optional
         # self.worker.error.connect(self.on_log_error)    
     
-        self.thread.start()  # Start the thread
+        self.cap_thread.start()  # Start the thread
+
+    def setup_log_csv_data_thread(self):
+        self.log_csv_thread = QThread()
+        self.log_csv_worker = LogDataWorker(self.getDevConns, self.end_timer)
+        self.log_csv_worker.moveToThread(self.log_csv_thread)
+        self.log_csv_thread.started.connect(self.log_csv_worker.run)
+        self.log_csv_worker.finished.connect(self.log_csv_thread.quit)
+        self.log_csv_worker.finished.connect(lambda: self.log_csv_data_btn.setText("LOG CSV DATA"))
+        self.log_csv_worker.finished.connect(lambda: self.log_csv_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;"))
+        self.log_csv_worker.progress.connect(self.on_log_message)
+        self.log_csv_thread.start()
+        self.log_csv_data_btn.setText("STOP")
+        self.log_csv_data_btn.setStyleSheet("background-color: white; color: gray; font-weight: bold; font-size: 14px;")
+
+    def setup_cap_off_thread(self):
+
+        self.cap_off_thread = QThread()
+        self.cap_off_worker = LogDataWorker(self.getDevConns, self.end_timer)
+        self.cap_off_worker.moveToThread(self.cap_off_thread) #Move worker to the thread
+
+        # Connect signals and slots
+        self.cap_off_thread.started.connect(self.cap_off_worker.run)
+        self.cap_off_worker.finished.connect(self.cap_off_thread.quit)
+        self.cap_off_worker.finished.connect(self.cap_off_worker.deleteLater)
+        self.cap_off_thread.finished.connect(self.cap_off_thread.deleteLater)
+        self.cap_off_worker.progress.connect(self.on_log_message)  # optional
+        # self.worker.error.connect(self.on_log_error)    
+    
+        self.cap_off_thread.start()  # Start the thread
 
     def setup_log_data_loc_thread(self):
         self.log_thread_loc = QThread()
@@ -208,15 +272,20 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
 
     def setup_plot_act_int_thread(self):
        
-        self.act_worker = PlotActiveIntensityWorker(self.getDevConns,       # ALL drones in one worker
-                                                    self.act_int_lines,  
-                                                    self.azm_lines, 
-                                                    self.intAx,  
-                                                    self.azAx,  
-                                                    self.intCanvas, 
-                                                    self.act_int_thresh_entry, 
-                                                    self.q_thresh_entry, 
-                                                    self.hist_thresh_entry)
+        self.act_worker = PlotActiveIntensityWorker(self.getDevConns,
+                                                    self.act_int_lines,
+                                                    self.azm_lines,
+                                                    self.intAx,
+                                                    self.azAx,
+                                                    self.intCanvas,
+                                                    self.act_int_thresh_entry,
+                                                    self.q_thresh_entry,
+                                                    self.hist_thresh_entry,
+                                                    self.log_data_entry,
+                                                    self.cap_btn,
+                                                    self.log_csv_data_btn,
+                                                    self.cap_off_data_btn)
+
         self.act_thread = QThread()   
         self.act_worker.moveToThread(self.act_thread)
         self.act_thread.started.connect(self.act_worker.run)
@@ -308,9 +377,63 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
     def onSyncTimeClicked(self):
         syncTimeAtStart(self.getDevConns)
       
+    def onCapClicked(self):
+        timer = int(self.log_data_entry.text())
+        self.cap_thread = QThread()
+        self.cap_worker = CapWorker(self.getDevConns, timer)
+        self.cap_worker.moveToThread(self.cap_thread)
+        self.cap_thread.started.connect(self.cap_worker.run)
+        self.cap_worker.finished.connect(self.cap_thread.quit)
+        self.cap_worker.finished.connect(self.onCapDone)
+        self.cap_thread.start()
+        self.cap_btn.setText("CAPTURING...")
+        self.cap_btn.setEnabled(False)
+        self.cap_btn.setStyleSheet("background-color: white; color: gray; font-weight: bold; font-size: 14px;")
+
+    def onCapDone(self):
+        self.cap_btn.setText("CAP ON")
+        self.cap_btn.setEnabled(True)
+        self.cap_btn.setStyleSheet("background-color: gray; color: white; font-weight: bold; font-size: 14px;")
+
+    def onCapOffClicked(self):
+        self.cap_off_thread = QThread()
+        self.cap_off_worker = CapOffWorker(self.getDevConns)
+        self.cap_off_worker.moveToThread(self.cap_off_thread)
+        self.cap_off_thread.started.connect(self.cap_off_worker.run)
+        self.cap_off_worker.finished.connect(self.cap_off_thread.quit)
+        self.cap_off_thread.start()
+
     def onLogDataClicked(self):
         self.end_timer = setTimer(self.timerEntry)
         self.setup_log_data_thread()
+
+    def onLogCsvDataClicked(self):
+        act_running = hasattr(self, 'act_worker') and self.act_thread.isRunning()
+
+        if self.log_csv_data_btn.text() == "STOP":
+            if act_running:
+                self.act_worker.stop_logging()
+            else:
+                self.log_csv_worker.stop()
+                self.log_csv_thread.quit()
+                self.log_csv_thread.wait()
+            self.log_csv_data_btn.setText("LOG CSV DATA")
+            self.log_csv_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        else:
+            self.end_timer = setTimer(self.log_data_entry)
+            if act_running:
+                self.act_worker.logStopped.connect(self.onActLogStopped)
+                self.act_worker.start_logging(self.end_timer)
+            else:
+                self.setup_log_csv_data_thread()
+            self.log_csv_data_btn.setText("STOP")
+            self.log_csv_data_btn.setStyleSheet("background-color: white; color: gray; font-weight: bold; font-size: 14px;")
+
+    def onActLogStopped(self):
+        self.log_csv_data_btn.setText("LOG CSV DATA")
+        self.log_csv_data_btn.setStyleSheet("background-color: gray; color: white;font-weight: bold;  font-size: 14px;")
+        self.act_worker.logStopped.disconnect(self.onActLogStopped)
+
 
     def onLogDataLocClicked(self):
         loc_running = hasattr(self, 'loc_worker') and self.loc_thread.isRunning()

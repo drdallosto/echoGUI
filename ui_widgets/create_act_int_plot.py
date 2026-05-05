@@ -1,7 +1,7 @@
 #create_act_int_plot.py
 from PyQt6.QtWidgets import (QLabel, QScrollArea, QLineEdit, QGridLayout,
                               QGroupBox, QVBoxLayout, QHBoxLayout, QWidget,
-                              QScrollArea, QSizePolicy, QFrame)
+                              QScrollArea, QSizePolicy, QFrame,  QPushButton)
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 import matplotlib
@@ -13,7 +13,7 @@ from collections import deque
 plotSize = 4
 plotFontSize = 8
 
-def createActIntPlot(tab2,plot_act_int_btn,dev_names):
+def createActIntPlot(tab2,plot_act_int_btn, cap_btn,log_csv_data_btn,log_raw_data_btn,dev_names):
 
     act_int_group = QGroupBox() #"Active Intensity")
     act_int_group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -107,30 +107,46 @@ def createActIntPlot(tab2,plot_act_int_btn,dev_names):
     act_int_lbl = QLabel("Active Intensity\n   Treshold")
     act_int_lbl.setFont(bold_font)
     act_int_thresh_entry = QLineEdit('20')
-    act_int_thresh_entry.setFixedWidth(75)
+    act_int_thresh_entry.setFixedWidth(50)
     act_int_thresh_entry.setStyleSheet("QLineEdit { background-color: white; }")
     top_layout.addWidget(act_int_lbl) 
     top_layout.addWidget(act_int_thresh_entry) 
-    #top_layout.addStretch()
-    top_layout.addSpacing(15)
+    top_layout.addSpacing(10)
 
     q_thresh_lbl = QLabel("Q-factor\n Treshold")
     q_thresh_lbl.setFont(bold_font)
     q_thresh_entry = QLineEdit('2')
-    q_thresh_entry.setFixedWidth(75)
+    q_thresh_entry.setFixedWidth(50)
     q_thresh_entry.setStyleSheet("QLineEdit { background-color: white; }")
     top_layout.addWidget(q_thresh_lbl) 
     top_layout.addWidget(q_thresh_entry) 
-    #top_layout.addStretch()
-    top_layout.addSpacing(15)
+    top_layout.addSpacing(10)
    
     hist_thresh_lbl = QLabel("Histogram\n Treshold")
     hist_thresh_lbl.setFont(bold_font)
     hist_thresh_entry = QLineEdit('5')
-    hist_thresh_entry.setFixedWidth(75)
+    hist_thresh_entry.setFixedWidth(50)
     hist_thresh_entry.setStyleSheet("QLineEdit { background-color: white; }")
     top_layout.addWidget(hist_thresh_lbl) 
     top_layout.addWidget(hist_thresh_entry) 
+    top_layout.addSpacing(10)
+
+    log_data_lbl = QLabel(" Log Data\nTimer (sec)")
+    log_data_lbl.setFont(bold_font)
+    log_data_entry = QLineEdit('10')
+    log_data_entry.setFixedWidth(50)
+    log_data_entry.setStyleSheet("QLineEdit { background-color: white; }")
+    top_layout.addWidget(log_data_lbl) 
+    top_layout.addWidget(log_data_entry) 
+    top_layout.addSpacing(10)
+
+    top_layout.addWidget(cap_btn) 
+    top_layout.addSpacing(10)
+
+    top_layout.addWidget(log_csv_data_btn) 
+    top_layout.addSpacing(10)
+
+    top_layout.addWidget(log_raw_data_btn) 
     top_layout.addStretch()
 
     #layout.addLayout(top_layout)
@@ -144,5 +160,5 @@ def createActIntPlot(tab2,plot_act_int_btn,dev_names):
 
     tab2.setLayout(layout)
 
-    return act_int_lines, azm_lines, intAx, azAx, intCanvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry
+    return act_int_lines, azm_lines, intAx, azAx, intCanvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry,log_data_entry #, cap_btn,log_csv_data_btn, log_raw_data_btn 
 
