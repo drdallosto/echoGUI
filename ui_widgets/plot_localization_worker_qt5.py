@@ -1,6 +1,6 @@
 #plot_localization_worker_qt5.py
-from ui_widgets.send_msg_id_stream import sendMsgIdStream
 from ui_widgets.create_sound_loc_plot_qt5 import small_rad
+from pymavlink import mavutil
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 import numpy as np
 import os, csv, datetime, time
@@ -73,9 +73,22 @@ class PlotLocalizationWorker(QObject):
 
     def getAzimuth(self):
         message_id = 297
+
         for name, connection in self.connection.items():
-            self.progress.emit(f"--- streaming azimuth for {name} ---")
-            sendMsgIdStream(connection, message_id)
+            while connection.recv_match(blocking=False) is not None:
+                pass
+
+        for name, connection in self.connection.items():
+            cmd = connection.mav.command_long_encode(
+                connection.target_system,
+                connection.target_component,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0, message_id, 0, 0, 0, 0, 0, 0)
+            connection.mav.send(cmd)
+
+        for name, connection in self.connection.items():
+            connection.recv_match(type='COMMAND_ACK', blocking=True, timeout=3)
+            #self.progress.emit(f"--- streaming azimuth for {name} ---")
 
         while self.running:
             changed = False

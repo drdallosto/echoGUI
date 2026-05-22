@@ -160,5 +160,5 @@ def createActIntPlot(tab2,plot_act_int_btn, cap_btn,log_csv_data_btn,log_raw_dat
 
     tab2.setLayout(layout)
 
-    return act_int_lines, azm_lines, intAx, azAx, intCanvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry,log_data_entry #, cap_btn,log_csv_data_btn, log_raw_data_btn 
+    return act_int_lines, azm_lines, intAx, azAx, intCanvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry, log_data_entry
 

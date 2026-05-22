@@ -90,11 +90,7 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
                                                       self.sound_loc_btn,
                                                       self.log_data_btn_loc)
 
-<<<<<<< HEAD
         #self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
-=======
-#        self.dev_combo.currentIndexChanged.connect(self.onDeviceChanged)
->>>>>>> 81886bd2dea52d6d7c255af05fd18b71276a3a67
 
         QTimer.singleShot(0, lambda: syncTimeAtStart(self.getDevConns))  # sync time once gui is launched
 
@@ -114,7 +110,6 @@ class MainWindow(QWidget): # subclass QWidget to create a custom window for our 
             self.port_map.update({f"dev{i+1}": port })   #{'dev1': 'COM6', 'dev2': 'COM15'}
     
         for name,port in self.port_map.items():
-
             # Connect to the flight controller
             connection = mavutil.mavlink_connection(device=port, baud=57600)
             connection.wait_heartbeat(timeout=8)

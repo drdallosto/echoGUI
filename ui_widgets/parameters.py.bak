@@ -44,8 +44,6 @@ avs_description = [
     '(FFT start bin)',
     '(FFT Hann window flag)',
     '(send commands to ARES, default: 0 = disabled)',
-    '(send capture OFF command to ARES, default: 0 = disabled)',
-    '(send capture ON command to ARES, default: 0 = disabled)',
     '(top AVS node ID)'
 ]
 
@@ -89,7 +87,5 @@ all_params = [
     'AVS_FFT_STRT_BIN',
     'AVS_FFT_WINDOW',
     'AVS_SEND_ARES',
-    'AVS_SEND_CAP_OFF',
-    'AVS_SEND_CAP_ON',
     'AVS_TOP_NODE_ID',
     ]

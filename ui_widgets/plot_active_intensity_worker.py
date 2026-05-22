@@ -1,6 +1,5 @@
 #plot_active_intensity_worker.py
 from pymavlink import mavutil
-from ui_widgets.send_msg_id_stream import sendMsgIdStream
 from collections import deque
 from ui_widgets.create_act_int_plot import createActIntPlot
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
@@ -23,7 +22,7 @@ class PlotActiveIntensityWorker(QObject):
     plotUpdated = pyqtSignal()
 
     def __init__(self, getDevConns, act_int_lines, azm_lines,intAx, azAx, intCanvas, act_int_thresh_entry, q_thresh_entry, hist_thresh_entry, log_data_entry, cap_btn,log_csv_data_btn, log_raw_data_btn ):
-        super().__init__()
+        super().__init__()  
         self.connection = getDevConns
         self.running = True 
 
@@ -35,9 +34,9 @@ class PlotActiveIntensityWorker(QObject):
         self.intCanvas     = intCanvas
  
         # thresholds
-        self.threshAct  = int(act_int_thresh_entry.text())
-        self.threshQ    = int(q_thresh_entry.text())
-        self.threshHst  = int(hist_thresh_entry.text())
+        self.act_int_thresh_entry = act_int_thresh_entry
+        self.q_thresh_entry       = q_thresh_entry
+        self.hist_thresh_entry    = hist_thresh_entry
 
         self.logDataTimer = int(log_data_entry.text())
 
@@ -71,8 +70,10 @@ class PlotActiveIntensityWorker(QObject):
 
     def stop(self):
         self.running = False
+
         if self._logging:
             self.stop_logging()
+
         for name in self.connection:
             self.tt[name].clear()
             self.actv[name].clear()
@@ -88,6 +89,7 @@ class PlotActiveIntensityWorker(QObject):
         fieldnames = ['device', 'node_id', 'time_utc_usec', 'active_intensity', 'q_factor',
                       'histogram_count', 'azimuth', 'elevation', 'yaw', 'pitch', 'roll',
                       'north', 'east', 'down']
+        
         self._csv_file        = open(csv_path, mode='a', newline='')
         self._csv_writer      = csv.DictWriter(self._csv_file, fieldnames=fieldnames)
         self._csv_writer.writeheader()
@@ -113,15 +115,28 @@ class PlotActiveIntensityWorker(QObject):
         self.progress.emit("--- sending message to stream active intensity---")  
         self.progress.emit('')
 
-        message_id = 297 #message ID for SENSOR_AVS_LITE_EXT
+        message_id = 297
+        self.streaming_devices = set()
+
+        # step 1: drain all buffers
         for name, connection in self.connection.items():
-            self.progress.emit('')
-            self.progress.emit(f"--- streaming ative intensity for {name} ---")
-            self.progress.emit('')
-            sendMsgIdStream(connection, message_id)
-    
-        "data acquisition thread"
-        "get active intenisty data"
+            while connection.recv_match(blocking=False) is not None:
+                pass
+
+        # step 2: send stream command to all devices simultaneously
+        for name, connection in self.connection.items():
+            cmd = connection.mav.command_long_encode(
+                connection.target_system,
+                connection.target_component,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0, message_id, 0, 0, 0, 0, 0, 0)
+            connection.mav.send(cmd)
+
+        # step 3: collect ACKs
+        for name, connection in self.connection.items():
+            connection.recv_match(type='COMMAND_ACK', blocking=True, timeout=3)
+            self.streaming_devices.add(name)
+            self.progress.emit(f"--- streaming active intensity for {name} ---")
     
         # ---------- data acquisition loop ----------
         self.progress.emit('')
@@ -129,7 +144,7 @@ class PlotActiveIntensityWorker(QObject):
         while self.running:
             changed = False
             for name, connection in self.connection.items():
-                msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False) #, timeout=0.1)   #blocking=False to cycle through all drones instead of blocking on one
+                msg = connection.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=False, timeout= 0.001) #, timeout=0.1)   #blocking=False to cycle through all drones instead of blocking on one
 
                 if msg:
                     self.dataReady.emit(name, msg.time_utc_usec, msg.device_id, msg.active_intensity, msg.azimuth_deg, msg.histogram_count, msg.q_factor)
@@ -183,10 +198,16 @@ class PlotActiveIntensityWorker(QObject):
 
         #print("THRESHOLDS: ", self.threshAct,self.threshHst, self.threshQ)
 
-        # plot azimuth point when exceeding all 3 thresholds 
-        azThresh[np.array(self.actv[name]) < self.threshAct] = np.nan
-        azThresh[np.array(self.hist[name]) < self.threshHst] = np.nan
-        azThresh[np.array(self.qfct[name]) < self.threshQ] = np.nan
+        try:
+            threshAct = int(self.act_int_thresh_entry.text())
+            threshQ   = int(self.q_thresh_entry.text())
+            threshHst = int(self.hist_thresh_entry.text())
+        except ValueError:
+            return
+
+        azThresh[np.array(self.actv[name]) < threshAct] = np.nan
+        azThresh[np.array(self.hist[name]) < threshHst] = np.nan
+        azThresh[np.array(self.qfct[name]) < threshQ]   = np.nan
 
         self.azm_lines[name].set_data(np.array(self.tt[name]), azThresh)
 

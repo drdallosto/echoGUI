@@ -1,6 +1,5 @@
 #plot_active_intensity_worker_qt5.py
 from pymavlink import mavutil
-from ui_widgets.send_msg_id_stream import sendMsgIdStream
 from collections import deque
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 import numpy as np
@@ -32,9 +31,9 @@ class PlotActiveIntensityWorker(QObject):
         self.intAx         = intAx
         self.intCanvas     = intCanvas
 
-        self.threshAct  = int(act_int_thresh_entry.text())
-        self.threshQ    = int(q_thresh_entry.text())
-        self.threshHst  = int(hist_thresh_entry.text())
+        self.act_int_thresh_entry = act_int_thresh_entry
+        self.q_thresh_entry       = q_thresh_entry
+        self.hist_thresh_entry    = hist_thresh_entry
 
         self.logDataTimer = int(log_data_entry.text())
 
@@ -101,9 +100,27 @@ class PlotActiveIntensityWorker(QObject):
 
     def getActiveIntensity(self):
         message_id = 297
+        self.streaming_devices = set()
+
+        # step 1: drain all buffers
         for name, connection in self.connection.items():
+            while connection.recv_match(blocking=False) is not None:
+                pass
+
+        # step 2: send stream command to all devices simultaneously
+        for name, connection in self.connection.items():
+            cmd = connection.mav.command_long_encode(
+                connection.target_system,
+                connection.target_component,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0, message_id, 0, 0, 0, 0, 0, 0)
+            connection.mav.send(cmd)
+
+        # step 3: collect ACKs
+        for name, connection in self.connection.items():
+            connection.recv_match(type='COMMAND_ACK', blocking=True, timeout=3)
+            self.streaming_devices.add(name)
             self.progress.emit(f"--- streaming active intensity for {name} ---")
-            sendMsgIdStream(connection, message_id)
 
         while self.running:
             changed = False
@@ -158,9 +175,16 @@ class PlotActiveIntensityWorker(QObject):
         self.act_int_lines[name].set_data(np.array(self.tt[name]), np.array(self.actv[name]))
 
         azThresh = np.array(self.az[name], dtype=float)
-        azThresh[np.array(self.actv[name]) < self.threshAct] = np.nan
-        azThresh[np.array(self.hist[name]) < self.threshHst] = np.nan
-        azThresh[np.array(self.qfct[name]) < self.threshQ]   = np.nan
+        try:
+            threshAct = int(self.act_int_thresh_entry.text())
+            threshQ   = int(self.q_thresh_entry.text())
+            threshHst = int(self.hist_thresh_entry.text())
+        except ValueError:
+            return
+
+        azThresh[np.array(self.actv[name]) < threshAct] = np.nan
+        azThresh[np.array(self.hist[name]) < threshHst] = np.nan
+        azThresh[np.array(self.qfct[name]) < threshQ]   = np.nan
 
         self.azm_lines[name].set_data(np.array(self.tt[name]), azThresh)
 

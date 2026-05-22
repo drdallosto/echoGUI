@@ -1,6 +1,5 @@
 #plot_NED_worker_qt5.py
 from pymavlink import mavutil
-from ui_widgets.send_msg_id_stream import sendMsgIdStream
 from collections import deque
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 import numpy as np
@@ -48,9 +47,22 @@ class PlotNEDWorker(QObject):
 
     def getNED_data(self):
         message_id = 297
+
         for name, connection in self.connection.items():
+            while connection.recv_match(blocking=False) is not None:
+                pass
+
+        for name, connection in self.connection.items():
+            cmd = connection.mav.command_long_encode(
+                connection.target_system,
+                connection.target_component,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0, message_id, 0, 0, 0, 0, 0, 0)
+            connection.mav.send(cmd)
+
+        for name, connection in self.connection.items():
+            connection.recv_match(type='COMMAND_ACK', blocking=True, timeout=3)
             self.progress.emit(f"--- streaming NED for {name} ---")
-            sendMsgIdStream(connection, message_id)
 
         while self.running:
             changed = False

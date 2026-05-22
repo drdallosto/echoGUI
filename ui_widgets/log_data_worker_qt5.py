@@ -54,7 +54,7 @@ class LogDataWorker(QObject):
 
         message_id = 297
         for name, connection in self.connections.items():
-            self.progress.emit(f"--- streaming for {name} ---")
+            self.progress.emit(f"\n--- streaming for {name} ---")
             sendMsgIdStream(connection, message_id)
 
         self.progress.emit('writing to csv..')

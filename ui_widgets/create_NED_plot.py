@@ -39,7 +39,8 @@ def createNEDPlot(tab3, plot_ned_btn, dev_names):
         ned_lines[name]= ned_line
     
     #print(ned_lines)
-    axNED.legend()
+    if ned_lines:
+        axNED.legend()
     canvasNED.draw()
 
     # Wrap canvas in a widget and scroll area

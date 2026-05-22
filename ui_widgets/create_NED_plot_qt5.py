@@ -31,7 +31,8 @@ def createNEDPlot(tab3, plot_ned_btn, dev_names):
         ned_line, = axNED.plot([], [], [], color=colors[i], label=name)
         ned_lines[name] = ned_line
 
-    axNED.legend()
+    if ned_lines:
+        axNED.legend()
     canvasNED.draw()
 
     main_widget = QWidget()
