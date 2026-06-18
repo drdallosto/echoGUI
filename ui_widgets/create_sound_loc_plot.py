@@ -1,7 +1,7 @@
 # ui_widgets/create_sound_loc_plot.py
 import numpy as np
 from PyQt6.QtWidgets import (QVBoxLayout, QHBoxLayout, QSizePolicy,
-                              QWidget, QLabel, QLineEdit)
+                              QWidget, QLabel, QLineEdit, QPushButton)
 from PyQt6.QtGui import QFont
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -21,6 +21,11 @@ dev_labels = [(-0.35,  0.20),
               ( 0.10,  0.20),
               ( 0.10, -0.30),
               (-0.35, -0.30)]
+
+_BTN_STYLE        = "background-color: gray;  color: white; font-weight: bold; font-size: 13px;"
+_TITLE_IDLE       = "Sound Localization"
+_TITLE_DRAG_MODE  = "Sound Localization  [drag nodes to reposition]"
+_DRAG_SNAP        = 0.35    # data-unit radius to pick up a node
 
 
 def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
@@ -85,8 +90,7 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
 
     theta = np.linspace(0, 2 * np.pi, 360)
 
-    # ── heatmap layer (zorder=1, drawn first / lowest) ─────────────────
-    # Initialised as fully transparent RGBA — worker writes into this each frame
+    # ── heatmap layer (zorder=1, lowest) ──────────────────────────────
     heat_init = np.zeros((HEAT_GRID_N, HEAT_GRID_N, 4), dtype=np.float32)
     heatmap_img = ax.imshow(
         heat_init,
@@ -112,7 +116,7 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
         ax.text(2.82 * np.cos(r), 2.82 * np.sin(r), label,
                 ha=ha, va=va, fontsize=9, fontweight="bold", color="#999999")
 
-    # ── beam wedge patches (zorder=2, between heatmap and lines) ──────
+    # ── beam wedge patches (zorder=2) ─────────────────────────────────
     beam_patches = {}
     for i, name in enumerate(dev_names):
         color = dev_color(i)
@@ -125,26 +129,38 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
         ax.add_patch(patch)
         beam_patches[name] = patch
 
-    # ── devices (zorder=4-5) ──────────────────────────────────────────
-    azimuth_lines = {}
-    dev_positions = {}
+    # ── device artists ─────────────────────────────────────────────────
+    azimuth_lines     = {}
+    dev_positions     = {}
+    dev_dots          = {}
+    dev_label_texts   = {}
+    dev_halos_dict    = {}
+    dev_label_offsets = {}
 
     for i, name in enumerate(dev_names):
         color  = dev_color(i)
         marker = dev_marker(i)
+        dx_off, dy_off = dev_labels[i]
+        dev_label_offsets[name] = (dx_off, dy_off)
 
-        ax.scatter(dev_x_pos[i], dev_y_pos[i],
-                   s=90, color=color, marker=marker, zorder=5)
+        # dot — use plot() so set_data() can reposition it
+        dot, = ax.plot(dev_x_pos[i], dev_y_pos[i],
+                       marker=marker, color=color, markersize=9,
+                       linestyle="none", zorder=5)
+        dev_dots[name] = dot
 
-        dx, dy = dev_labels[i]
-        ax.text(dev_x_pos[i] + dx, dev_y_pos[i] + dy, name,
-                fontsize=8, fontweight="bold", color=color)
+        # label
+        lbl_txt = ax.text(dev_x_pos[i] + dx_off, dev_y_pos[i] + dy_off, name,
+                          fontsize=8, fontweight="bold", color=color)
+        dev_label_texts[name] = lbl_txt
 
+        # halo circle
         halo = Circle((dev_x_pos[i], dev_y_pos[i]), small_rad,
                       fill=False, edgecolor=color, linewidth=0.9, alpha=0.30, zorder=3)
         ax.add_patch(halo)
+        dev_halos_dict[name] = halo
 
-        # centre-line ray drawn on top of wedge and heatmap
+        # azimuth centre-line ray
         line, = ax.plot([], [], "-", color=color, linewidth=1.6, alpha=0.95, zorder=4)
         azimuth_lines[name] = line
         dev_positions[name] = (dev_x_pos[i], dev_y_pos[i])
@@ -165,8 +181,7 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
     # ── grid / styling ────────────────────────────────────────────────
     ax.axhline(0, color="#dddddd", linewidth=0.7, zorder=0)
     ax.axvline(0, color="#dddddd", linewidth=0.7, zorder=0)
-
-    ax.set_title("Sound Localization", fontsize=11, fontweight="bold", pad=8)
+    ax.set_title(_TITLE_DRAG_MODE, fontsize=11, fontweight="bold", pad=8)
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.yaxis.set_major_locator(MultipleLocator(1))
     ax.set_xticklabels([])
@@ -174,32 +189,106 @@ def createSoundLoc(tab, dev_names, sound_loc_btn, log_data_btn):
     ax.grid(True, color="#eeeeee", linewidth=0.5)
     ax.set_xlim(-PLOT_RANGE, PLOT_RANGE)
     ax.set_ylim(-PLOT_RANGE, PLOT_RANGE)
-
     for spine in ax.spines.values():
         spine.set_visible(False)
 
     canvas.draw()
 
     # ── button row ────────────────────────────────────────────────────
+    reset_zoom_btn = QPushButton("RESET ZOOM")
+    reset_zoom_btn.setFixedWidth(110)
+    reset_zoom_btn.setFixedHeight(30)
+    reset_zoom_btn.setStyleSheet(_BTN_STYLE)
+
     btn_row = QHBoxLayout()
     btn_row.addStretch()
     btn_row.addWidget(sound_loc_btn)
     btn_row.addSpacing(20)
     btn_row.addWidget(log_data_btn)
+    btn_row.addSpacing(20)
+    btn_row.addWidget(reset_zoom_btn)
     btn_row.addStretch()
     layout.addLayout(btn_row)
 
     # ── scroll zoom ───────────────────────────────────────────────────
-    def on_scroll(event, ax, canvas):
+    def _on_scroll(event):
+        if event.inaxes != ax:
+            return
         scale = 0.9 if event.button == "up" else 1.1
         ax.set_xlim([x * scale for x in ax.get_xlim()])
         ax.set_ylim([y * scale for y in ax.get_ylim()])
         canvas.draw_idle()
 
-    canvas.mpl_connect("scroll_event", lambda e: on_scroll(e, ax, canvas))
+    canvas.mpl_connect("scroll_event", _on_scroll)
+
+    # ── reset zoom ────────────────────────────────────────────────────
+    def _on_reset_zoom():
+        ax.set_xlim(-PLOT_RANGE, PLOT_RANGE)
+        ax.set_ylim(-PLOT_RANGE, PLOT_RANGE)
+        canvas.draw_idle()
+
+    reset_zoom_btn.clicked.connect(_on_reset_zoom)
+
+    # ── node drag ─────────────────────────────────────────────────────
+    _drag = {'node': None, 'enabled': True}   # enabled by default (worker not running)
+
+    def _pick_node(mx, my):
+        """Return the name of the nearest device within snap radius, or None."""
+        best, best_d = None, _DRAG_SNAP
+        for name, (nx, ny) in dev_positions.items():
+            d = np.hypot(mx - nx, my - ny)
+            if d < best_d:
+                best, best_d = name, d
+        return best
+
+    def _on_press(event):
+        if not _drag['enabled'] or event.inaxes != ax:
+            return
+        _drag['node'] = _pick_node(event.xdata, event.ydata)
+
+    def _on_motion(event):
+        if _drag['node'] is None or event.inaxes != ax:
+            return
+        name = _drag['node']
+        x, y = event.xdata, event.ydata
+
+        # update shared position dict (worker reads this directly)
+        dev_positions[name] = (x, y)
+
+        # reposition dot
+        dev_dots[name].set_data([x], [y])
+
+        # reposition label
+        dx_off, dy_off = dev_label_offsets[name]
+        dev_label_texts[name].set_position((x + dx_off, y + dy_off))
+
+        # reposition halo
+        dev_halos_dict[name].set_center((x, y))
+
+        canvas.draw_idle()
+
+    def _on_release(event):
+        _drag['node'] = None
+
+    canvas.mpl_connect("button_press_event",   _on_press)
+    canvas.mpl_connect("motion_notify_event",  _on_motion)
+    canvas.mpl_connect("button_release_event", _on_release)
+
+    # ── drag enable / disable (called from main.py) ───────────────────
+    def enable_drag():
+        _drag['enabled'] = True
+        ax.set_title(_TITLE_DRAG_MODE, fontsize=11, fontweight="bold", pad=8)
+        canvas.draw_idle()
+
+    def disable_drag():
+        _drag['enabled'] = False
+        _drag['node'] = None
+        ax.set_title(_TITLE_IDLE, fontsize=11, fontweight="bold", pad=8)
+        canvas.draw_idle()
 
     return (azimuth_lines, dev_positions, canvas,
             act_int_thresh_entry, q_thresh_entry, hist_thresh_entry,
             source_point, source_ring, source_status,
             heatmap_img, beam_patches,
-            beam_width_entry, time_const_entry)
+            beam_width_entry, time_const_entry,
+            enable_drag, disable_drag)

@@ -254,7 +254,7 @@ class PlotLocalizationWorker(QObject):
             return
 
         x0, y0    = self.dev_positions[name]
-        center_rad = np.radians(90 - azimuth_deg)# - yaw)
+        center_rad = np.radians(90 - azimuth_deg -45)# - yaw)
         half_bw    = np.radians(beam_width_deg / 2.0)
         scale      = 8 * small_rad
 

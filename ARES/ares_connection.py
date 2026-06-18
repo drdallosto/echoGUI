@@ -9,7 +9,7 @@ import socket
 
 # Server to connect to
 
-SERVER_HOST = '192.168.3.4'   # Server IPv4 address
+SERVER_HOST = '10.95.97.134'   # Server IPv4 address
 SERVER_PORT = 30000       # Server port
 
 # Create an IPv4 TCP socket
