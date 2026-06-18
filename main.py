@@ -28,6 +28,7 @@ _KNOWN_PORT_DESCRIPTIONS = {
     "Silicon Labs CP210x USB to UART Bridge",
     "CP2102 USB to UART Bridge Controller",
     "FT231X USB UART",
+    "ARK FPV.x",
 }
 
 
