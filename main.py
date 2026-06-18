@@ -1,3 +1,4 @@
+# main.py
 import sys
 
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QPushButton
@@ -12,8 +13,6 @@ from ui_widgets.sync_time_at_start import syncTimeAtStart
 from ui_widgets.log_data_worker import LogDataWorker
 from ui_widgets.plot_active_intensity_worker import PlotActiveIntensityWorker
 from ui_widgets.create_act_int_plot import createActIntPlot
-from ui_widgets.create_NED_plot import createNEDPlot
-from ui_widgets.plot_NED_worker import PlotNEDWorker
 from ui_widgets.create_sound_loc_plot import createSoundLoc
 from ui_widgets.plot_localization_worker import PlotLocalizationWorker
 
@@ -36,7 +35,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ECHO")
-        self.setFixedSize(QSize(1000, 900))
+        self.setMinimumSize(QSize(1000, 900))
 
         self.portList        = []
         self.port_map        = {}
@@ -65,17 +64,23 @@ class MainWindow(QWidget):
             list(self.getDevConns.keys()),
         )
 
-        self.ned_lines, self.axNED, self.canvasNED = createNEDPlot(
-            self.tab3, self.plot_ned_btn, list(self.getDevConns.keys())
-        )
-
         (self.azimuth_lines,
          self.dev_positions,
          self.devLocCanvas,
          self.loc_act_int_thresh_entry,
          self.loc_q_thresh_entry,
-         self.loc_hist_thresh_entry) = createSoundLoc(
-            self.tab4,
+         self.loc_hist_thresh_entry,
+         self.source_point,
+         self.source_ring,
+         self.source_status,
+         self.heatmap_img,
+         self.beam_patches,
+         self.beam_width_entry,
+         self.time_const_entry,
+         self.enable_drag,          # called when worker stops
+         self.disable_drag,         # called when worker starts
+         ) = createSoundLoc(
+            self.tab3,
             list(self.getDevConns.keys()),
             self.sound_loc_btn,
             self.log_data_btn_loc,
@@ -83,9 +88,7 @@ class MainWindow(QWidget):
 
         QTimer.singleShot(0, lambda: syncTimeAtStart(self.getDevConns))
 
-    # ------------------------------------------------------------------ #
-    #  Port discovery                                                      #
-    # ------------------------------------------------------------------ #
+    # ── port discovery ────────────────────────────────────────────────
 
     def get_available_ports(self):
         all_ports = QSerialPortInfo.availablePorts()
@@ -118,12 +121,9 @@ class MainWindow(QWidget):
             print(f"Heartbeat received from {name}")
             disableStreams(connection)
 
-    # ------------------------------------------------------------------ #
-    #  UI setup                                                            #
-    # ------------------------------------------------------------------ #
+    # ── UI setup ──────────────────────────────────────────────────────
 
     def _make_button(self, label: str, width: int, slot) -> QPushButton:
-        """Create a consistently styled toolbar button."""
         btn = QPushButton(label)
         btn.setFixedWidth(width)
         btn.setFixedHeight(30)
@@ -132,7 +132,6 @@ class MainWindow(QWidget):
         return btn
 
     def _set_btn(self, btn: QPushButton, label: str, active: bool):
-        """Update a button's label and style in one call."""
         btn.setText(label)
         btn.setStyleSheet(_BTN_ACTIVE if active else _BTN_RUNNING)
 
@@ -140,15 +139,12 @@ class MainWindow(QWidget):
         self.tabs = QTabWidget()
         self.tab2 = QWidget()
         self.tab3 = QWidget()
-        self.tab4 = QWidget()
 
         self.tabs.addTab(self.tab2, "VISUALS")
-        self.tabs.addTab(self.tab3, "NED")
-        self.tabs.addTab(self.tab4, "SOUND LOCALIZATION")
+        self.tabs.addTab(self.tab3, "SOUND LOCALIZATION")
 
         self.log_data_btn     = self._make_button("LOG DATA",              110, self.onLogDataClicked)
         self.plot_act_int_btn = self._make_button("PLOT ACTIVE INTENSITY", 175, self.onPlotActIntClicked)
-        self.plot_ned_btn     = self._make_button("PLOT NED",              175, self.onPlotNedClicked)
         self.sound_loc_btn    = self._make_button("SOUND LOCALIZATION",    200, self.onSoundLocClicked)
         self.log_data_btn_loc = self._make_button("LOG DATA",              110, self.onLogDataLocClicked)
         self.cap_btn          = self._make_button("CAP ON",                120, self.onCapClicked)
@@ -159,9 +155,7 @@ class MainWindow(QWidget):
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
-    # ------------------------------------------------------------------ #
-    #  Thread setup helpers                                                #
-    # ------------------------------------------------------------------ #
+    # ── thread helpers ────────────────────────────────────────────────
 
     def setup_log_csv_data_thread(self):
         self.log_csv_thread = QThread()
@@ -213,20 +207,6 @@ class MainWindow(QWidget):
         self.act_thread.start()
         self._set_btn(self.plot_act_int_btn, "STOP", active=False)
 
-    def setup_ned_plot_thread(self):
-        self.ned_thread = QThread()
-        self.ned_worker = PlotNEDWorker(
-            self.getDevConns,
-            self.ned_lines,
-            self.axNED,
-            self.canvasNED,
-        )
-        self.ned_worker.moveToThread(self.ned_thread)
-        self.ned_thread.started.connect(self.ned_worker.run)
-        self.ned_worker.finished.connect(self.ned_thread.quit)
-        self.ned_thread.start()
-        self._set_btn(self.plot_ned_btn, "STOP", active=False)
-
     def setup_localization_thread(self):
         self.loc_thread = QThread()
         self.loc_worker = PlotLocalizationWorker(
@@ -237,20 +217,29 @@ class MainWindow(QWidget):
             self.loc_act_int_thresh_entry,
             self.loc_q_thresh_entry,
             self.loc_hist_thresh_entry,
+            self.source_point,
+            self.source_ring,
+            self.source_status,
+            self.heatmap_img,
+            self.beam_patches,
+            self.beam_width_entry,
+            self.time_const_entry,
         )
         self.loc_worker.moveToThread(self.loc_thread)
         self.loc_thread.started.connect(self.loc_worker.run)
         self.loc_worker.finished.connect(self.loc_thread.quit)
         self.loc_worker.progress.connect(self.on_log_message)
         self.loc_thread.start()
+
+        self.disable_drag()
         self._set_btn(self.sound_loc_btn, "STOP", active=False)
 
-    # ------------------------------------------------------------------ #
-    #  Slots                                                               #
-    # ------------------------------------------------------------------ #
+    # ── logging helpers ───────────────────────────────────────────────
 
     def on_log_message(self, msg: str):
         print(msg)
+
+    # ── button handlers ───────────────────────────────────────────────
 
     def onSyncTimeClicked(self):
         syncTimeAtStart(self.getDevConns)
@@ -282,10 +271,8 @@ class MainWindow(QWidget):
         self.cap_off_thread.start()
 
     def onLogDataClicked(self):
-        # TODO: self.timerEntry is only set by the disabled Parameters tab (displayParams).
-        #       Re-enable that tab or wire a replacement timer entry widget here.
-        self.end_timer = setTimer(self.timerEntry)
-        self.setup_log_data_thread()
+        # TODO: wire self.timerEntry when Parameters tab is re-enabled
+        pass
 
     def onLogCsvDataClicked(self):
         act_running = hasattr(self, 'act_worker') and self.act_thread.isRunning()
@@ -323,8 +310,8 @@ class MainWindow(QWidget):
                 self.log_thread_loc.wait()
             self._set_btn(self.log_data_btn_loc, "LOG DATA", active=True)
         else:
-            # TODO: self.timerEntry is only set by the disabled Parameters tab.
-            self.end_timer = setTimer(self.timerEntry)
+            # TODO: wire self.timerEntry when Parameters tab is re-enabled
+            self.end_timer = setTimer(self.log_data_entry)
             if loc_running:
                 self.loc_worker.logStopped.connect(self.onLocLogStopped)
                 self.loc_worker.start_logging(self.end_timer)
@@ -347,11 +334,14 @@ class MainWindow(QWidget):
 
     def onSoundLocClicked(self):
         if hasattr(self, 'loc_worker') and self.loc_thread.isRunning():
+            # --- stop ---
             self.loc_worker.stop()
             self.loc_thread.quit()
             self.loc_thread.wait()
+            self.enable_drag()
             self._set_btn(self.sound_loc_btn, "SOUND LOCALIZATION", active=True)
         else:
+            # --- start ---
             standalone_logging = self.log_data_btn_loc.text() == "STOP"
             if standalone_logging:
                 remaining = self.end_timer
@@ -364,15 +354,6 @@ class MainWindow(QWidget):
             if standalone_logging:
                 self.loc_worker.logStopped.connect(self.onLocLogStopped)
                 self.loc_worker.start_logging(remaining)
-
-    def onPlotNedClicked(self):
-        if hasattr(self, 'ned_worker') and self.ned_thread.isRunning():
-            self.ned_worker.stop()
-            self.ned_thread.quit()
-            self.ned_thread.wait()
-            self._set_btn(self.plot_ned_btn, "PLOT NED", active=True)
-        else:
-            self.setup_ned_plot_thread()
 
 
 if __name__ == "__main__":
